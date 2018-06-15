@@ -46,8 +46,6 @@ var initDone  = false;
 var root = document.documentElement;
 var activeElement;
 var observer;
-var deltaBuffer = [];
-var deltaBufferTimer;
 var isMac = /^Mac/.test(navigator.platform);
 var isWin = /Windows/i.test(navigator.userAgent);
 
@@ -146,7 +144,6 @@ function init() {
  */
 function cleanup() {
     observer && observer.disconnect();
-    removeEvent(wheelEvent, wheel);
     removeEvent('mousedown', mousedown);
     removeEvent('keydown', keydown);
 }
@@ -282,90 +279,6 @@ function scrollArray(elem, left, top) {
 /***********************************************
  * EVENTS
  ***********************************************/
-
-/**
- * Mouse wheel handler.
- * @param {Object} event
- */
-function wheel(event) {
-
-    if (!initDone) {
-        init();
-    }
-
-    var target = event.target;
-
-    // leave early if default action is prevented
-    // or it's a zooming event with CTRL
-    if (event.defaultPrevented || event.ctrlKey) {
-        return true;
-    }
-
-    // leave embedded content alone (flash & pdf)
-    if (isNodeName(activeElement, 'embed') ||
-       (isNodeName(target, 'embed') && /\.pdf/i.test(target.src)) ||
-        isNodeName(activeElement, 'object') ||
-        target.shadowRoot) {
-        return true;
-    }
-
-    var deltaX = -event.wheelDeltaX || event.deltaX || 0;
-    var deltaY = -event.wheelDeltaY || event.deltaY || 0;
-
-    if (isMac) {
-        if (event.wheelDeltaX && isDivisible(event.wheelDeltaX, 120)) {
-            deltaX = -120 * (event.wheelDeltaX / Math.abs(event.wheelDeltaX));
-        }
-        if (event.wheelDeltaY && isDivisible(event.wheelDeltaY, 120)) {
-            deltaY = -120 * (event.wheelDeltaY / Math.abs(event.wheelDeltaY));
-        }
-    }
-
-    // use wheelDelta if deltaX/Y is not available
-    if (!deltaX && !deltaY) {
-        deltaY = -event.wheelDelta || 0;
-    }
-
-    // line based scrolling
-    if (event.deltaMode === 1) {
-        deltaX *= 40;
-        deltaY *= 40;
-    }
-
-    var xOnly = (deltaX && !deltaY);
-    var overflowing = overflowingAncestor(target, xOnly);
-
-    // nothing to do if there's no element that's scrollable
-    if (!overflowing) {
-        // Chrome iframes seem to eat wheel events, which we need to
-        // propagate up if the iframe has nothing overflowing to scroll
-        if (isFrame && isWin)  {
-            // change target to iframe element itself for the parent frame
-            Object.defineProperty(event, "target", {value: window.frameElement});
-            return parent.wheel(event);
-        }
-        return true;
-    }
-
-    // check if it's a touchpad scroll that should be ignored
-    if (!options.touchpadSupport && isTouchpad(deltaY)) {
-        return true;
-    }
-
-    // scale by step size
-    // delta is 120 most of the time
-    // synaptics seems to send 1 sometimes
-    if (Math.abs(deltaX) > 1.2) {
-        deltaX *= options.stepSize / 120;
-    }
-    if (Math.abs(deltaY) > 1.2) {
-        deltaY *= options.stepSize / 120;
-    }
-
-    scrollArray(overflowing, deltaX, deltaY);
-    event.preventDefault();
-    scheduleClearCache();
-}
 
 /**
  * Keydown event handler.
@@ -632,38 +545,6 @@ function directionCheck(x, y) {
     }
 }
 
-function isTouchpad(deltaY) {
-    if (!deltaY) return;
-    if (!deltaBuffer.length) {
-        deltaBuffer = [deltaY, deltaY, deltaY];
-    }
-    deltaY = Math.abs(deltaY);
-    deltaBuffer.push(deltaY);
-    deltaBuffer.shift();
-    clearTimeout(deltaBufferTimer);
-    deltaBufferTimer = setTimeout(function () {
-        chrome.storage.local.set({ deltaBuffer: deltaBuffer });
-    }, 1000);
-    var dpiScaledWheelDelta = deltaY > 120 && allDeltasDivisableBy(deltaY); // win64
-    return !allDeltasDivisableBy(120) && !allDeltasDivisableBy(100) && !dpiScaledWheelDelta;
-}
-
-function isDivisible(n, divisor) {
-    return (Math.floor(n / divisor) == n / divisor);
-}
-
-function allDeltasDivisableBy(divisor) {
-    return (isDivisible(deltaBuffer[0], divisor) &&
-            isDivisible(deltaBuffer[1], divisor) &&
-            isDivisible(deltaBuffer[2], divisor));
-}
-
-chrome.storage.local.get('deltaBuffer', function (stored) {
-    if (stored.deltaBuffer) {
-        deltaBuffer = stored.deltaBuffer;
-    }
-});
-
 function isInsideYoutubeVideo(event) {
     var elem = event.target;
     var isControl = false;
@@ -718,10 +599,6 @@ function pulse(x) {
     return pulse_(x);
 }
 
-// new standard wheel event from Chrome 31+
-var wheelEvent = 'onwheel' in document.createElement('div') ? 'wheel' : 'mousewheel';
-
-addEvent(wheelEvent, wheel);
 addEvent('mousedown', mousedown);
 addEvent('keydown', keydown);
 addEvent('load', loaded);
