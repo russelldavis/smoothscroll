@@ -286,7 +286,8 @@ function scrollArray(elem, left, top) {
  */
 function keydown(event) {
     var target   = event.target;
-    var modifier = event.ctrlKey || event.altKey || event.metaKey ||
+    var modifier = event.ctrlKey || event.altKey ||
+                  (event.metaKey && event.keyCode !== key.down && event.keyCode !== key.up) ||
                   (event.shiftKey && event.keyCode !== key.spacebar);
 
     // Our own tracked active element could've been deactive by being removed from the DOM
@@ -358,10 +359,24 @@ function keydown(event) {
 
     switch (event.keyCode) {
         case key.up:
-            y = -options.arrowScroll;
+            if (!event.metaKey) {
+                y = -options.arrowScroll;
+                break;
+            }
+            // Fall through to treat cmd+up as home
+        case key.home:
+            y = -overflowing.scrollTop;
             break;
         case key.down:
-            y = options.arrowScroll;
+            if (!event.metaKey) {
+                y = options.arrowScroll;
+                break;
+            }
+            // Fall through to treat cmd+down as end
+        case key.end:
+            var scroll = overflowing.scrollHeight - overflowing.scrollTop;
+            var scrollRemaining = scroll - clientHeight;
+            y = (scrollRemaining > 0) ? scrollRemaining+10 : 0;
             break;
         case key.spacebar: // (+ shift)
             shift = event.shiftKey ? 1 : -1;
@@ -372,14 +387,6 @@ function keydown(event) {
             break;
         case key.pagedown:
             y = clientHeight * 0.9;
-            break;
-        case key.home:
-            y = -overflowing.scrollTop;
-            break;
-        case key.end:
-            var scroll = overflowing.scrollHeight - overflowing.scrollTop;
-            var scrollRemaining = scroll - clientHeight;
-            y = (scrollRemaining > 0) ? scrollRemaining+10 : 0;
             break;
         case key.left:
             x = -options.arrowScroll;
