@@ -2,7 +2,7 @@
 //
 // SmoothScroll (Balazs Galambosi)
 // Licensed under the terms of the MIT license.
-// The only restriction would be not to publish any  
+// The only restriction would be not to publish any
 // extension for browsers or native application
 // without getting a written permission first.
 //
@@ -31,8 +31,8 @@ var defaultOptions = {
 
     // Other
     touchpadSupport   : false,
-    fixedBackground   : true, 
-    excluded          : ''    
+    fixedBackground   : true,
+    excluded          : ''
 };
 
 var options = defaultOptions;
@@ -51,7 +51,7 @@ var deltaBufferTimer;
 var isMac = /^Mac/.test(navigator.platform);
 var isWin = /Windows/i.test(navigator.userAgent);
 
-var key = { left: 37, up: 38, right: 39, down: 40, spacebar: 32, 
+var key = { left: 37, up: 38, right: 39, down: 40, spacebar: 32,
             pageup: 33, pagedown: 34, end: 35, home: 36 };
 var arrowKeys = { 37: 1, 38: 1, 39: 1, 40: 1 };
 
@@ -108,12 +108,12 @@ function init() {
     }
 
     initDone = true;
- 
+
     var body = document.body;
     var html = document.documentElement;
-    var windowHeight = window.innerHeight; 
+    var windowHeight = window.innerHeight;
     var scrollHeight = body.scrollHeight;
-    
+
     // check compat mode for root element
     root = (document.compatMode.indexOf('CSS') >= 0) ? html : body;
     activeElement = body;
@@ -128,7 +128,7 @@ function init() {
             (body.clientHeight + 1 < body.scrollHeight &&
              html.clientHeight + 1 < html.scrollHeight)) {
         if (root.offsetHeight <= windowHeight) {
-            var clearfix = document.createElement('div');   
+            var clearfix = document.createElement('div');
             clearfix.style.clear = 'both';
             body.appendChild(clearfix);
         }
@@ -152,7 +152,7 @@ function cleanup() {
 }
 
 /**
- * Make sure we are the last listener on the page so special 
+ * Make sure we are the last listener on the page so special
  * key event handlers (e.g for <video>) can come before us
  */
 function loaded() {
@@ -167,9 +167,9 @@ function loaded() {
 
 
 /************************************************
- * SCROLLING 
+ * SCROLLING
  ************************************************/
- 
+
 var que = [];
 var pending = null;
 var lastScroll = Date.now();
@@ -192,60 +192,60 @@ function scrollArray(elem, left, top) {
             }
         }
         lastScroll = Date.now();
-    }          
-    
+    }
+
     // push a scroll command
     que.push({
-        x: left, 
-        y: top, 
+        x: left,
+        y: top,
         lastX: (left < 0) ? 0.99 : -0.99,
-        lastY: (top  < 0) ? 0.99 : -0.99, 
+        lastY: (top  < 0) ? 0.99 : -0.99,
         start: Date.now()
     });
-        
+
     // don't act if there's a pending frame loop
     if (pending) {
         return;
-    }  
+    }
 
     var scrollWindow = (elem === document.body);
-    
+
     var step = function (time) {
-        
+
         var now = Date.now();
         var scrollX = 0;
-        var scrollY = 0; 
-    
+        var scrollY = 0;
+
         for (var i = 0; i < que.length; i++) {
-            
+
             var item = que[i];
             var elapsed  = now - item.start;
             var finished = (elapsed >= options.animationTime);
-            
+
             // scroll position: [0, 1]
             var position = (finished) ? 1 : elapsed / options.animationTime;
-            
+
             // easing [optional]
             if (options.pulseAlgorithm) {
                 position = pulse(position);
             }
-            
+
             // only need the difference
             var x = (item.x * position - item.lastX) >> 0;
             var y = (item.y * position - item.lastY) >> 0;
-            
+
             // add this to the total scrolling
             scrollX += x;
-            scrollY += y;            
-            
+            scrollY += y;
+
             // update last values
             item.lastX += x;
             item.lastY += y;
-        
+
             // delete and step back if it's over
             if (finished) {
                 que.splice(i, 1); i--;
-            }           
+            }
         }
 
         if (window.devicePixelRatio) {
@@ -256,24 +256,24 @@ function scrollArray(elem, left, top) {
         // scroll left and top
         if (scrollWindow) {
             window.scrollBy(scrollX, scrollY);
-        } 
+        }
         else {
             if (scrollX) elem.scrollLeft += scrollX;
-            if (scrollY) elem.scrollTop  += scrollY;                    
+            if (scrollY) elem.scrollTop  += scrollY;
         }
-        
+
         // clean up if there's nothing left to do
         if (!left && !top) {
             que = [];
         }
-        
-        if (que.length) { 
-            pending = window.requestAnimationFrame(step); 
-        } else { 
+
+        if (que.length) {
+            pending = window.requestAnimationFrame(step);
+        } else {
             pending = null;
         }
     };
-    
+
     // start a new queue of actions
     pending = window.requestAnimationFrame(step);
 }
@@ -295,14 +295,14 @@ function wheel(event) {
 
     var target = event.target;
 
-    // leave early if default action is prevented   
-    // or it's a zooming event with CTRL 
+    // leave early if default action is prevented
+    // or it's a zooming event with CTRL
     if (event.defaultPrevented || event.ctrlKey) {
         return true;
     }
-    
+
     // leave embedded content alone (flash & pdf)
-    if (isNodeName(activeElement, 'embed') || 
+    if (isNodeName(activeElement, 'embed') ||
        (isNodeName(target, 'embed') && /\.pdf/i.test(target.src)) ||
         isNodeName(activeElement, 'object') ||
         target.shadowRoot) {
@@ -337,7 +337,7 @@ function wheel(event) {
 
     // nothing to do if there's no element that's scrollable
     if (!overflowing) {
-        // Chrome iframes seem to eat wheel events, which we need to 
+        // Chrome iframes seem to eat wheel events, which we need to
         // propagate up if the iframe has nothing overflowing to scroll
         if (isFrame && isWin)  {
             // change target to iframe element itself for the parent frame
@@ -361,7 +361,7 @@ function wheel(event) {
     if (Math.abs(deltaY) > 1.2) {
         deltaY *= options.stepSize / 120;
     }
-    
+
     scrollArray(overflowing, deltaX, deltaY);
     event.preventDefault();
     scheduleClearCache();
@@ -374,7 +374,7 @@ function wheel(event) {
 function keydown(event) {
 
     var target   = event.target;
-    var modifier = event.ctrlKey || event.altKey || event.metaKey || 
+    var modifier = event.ctrlKey || event.altKey || event.metaKey ||
                   (event.shiftKey && event.keyCode !== key.spacebar);
 
     // our own tracked active element could've been removed from the DOM
@@ -393,7 +393,7 @@ function keydown(event) {
          isNodeName(target, 'input') && !buttonTypes.test(target.type) ||
          isNodeName(activeElement, 'video') ||
          isInsideYoutubeVideo(event) ||
-         target.isContentEditable || 
+         target.isContentEditable ||
          modifier ) {
       return true;
     }
@@ -437,7 +437,7 @@ function keydown(event) {
             break;
         case key.down:
             y = options.arrowScroll;
-            break;         
+            break;
         case key.spacebar: // (+ shift)
             shift = event.shiftKey ? 1 : -1;
             y = -shift * clientHeight * 0.9;
@@ -461,7 +461,7 @@ function keydown(event) {
             break;
         case key.right:
             x = options.arrowScroll;
-            break;            
+            break;
         default:
             return true; // a key we don't care about
     }
@@ -482,7 +482,7 @@ function mousedown(event) {
 /***********************************************
  * OVERFLOW
  ***********************************************/
- 
+
 var uniqueID = (function () {
     var i = 0;
     return function (el) {
@@ -498,8 +498,8 @@ var clearCacheTimer;
 
 function scheduleClearCache() {
     clearTimeout(clearCacheTimer);
-    clearCacheTimer = setInterval(function () { 
-        cacheX = cacheY = {}; 
+    clearCacheTimer = setInterval(function () {
+        cacheX = cacheY = {};
     }, 1*1000);
 }
 
@@ -536,9 +536,9 @@ function overflowingAncestor(el, x) {
            !x && rootScrollHeight === el.scrollHeight) {
             var topOverflowsNotHidden = overflowNotHidden(root, x) && overflowNotHidden(body, x);
             var isOverflowCSS = topOverflowsNotHidden || overflowAutoOrScroll(root, x);
-            if (isFrame && isContentOverflowing(root, x) || 
+            if (isFrame && isContentOverflowing(root, x) ||
                !isFrame && isOverflowCSS) {
-                return setCache(elems, getScrollRoot(), x); 
+                return setCache(elems, getScrollRoot(), x);
             }
         } else if (isContentOverflowing(el, x) && overflowAutoOrScroll(el, x)) {
             return setCache(elems, el, x);
@@ -547,7 +547,7 @@ function overflowingAncestor(el, x) {
 }
 
 function isContentOverflowing(el, x) {
-    return x ? (el.clientWidth  + 10 < el.scrollWidth) 
+    return x ? (el.clientWidth  + 10 < el.scrollWidth)
              : (el.clientHeight + 10 < el.scrollHeight);
 }
 
@@ -576,7 +576,7 @@ function addEvent(type, fn) {
 }
 
 function removeEvent(type, fn) {
-    window.removeEventListener(type, fn, false);  
+    window.removeEventListener(type, fn, false);
 }
 
 function isNodeName(el, tag) {
@@ -608,9 +608,9 @@ function isTouchpad(deltaY) {
     deltaBufferTimer = setTimeout(function () {
         chrome.storage.local.set({ deltaBuffer: deltaBuffer });
     }, 1000);
-    var dpiScaledWheelDelta = deltaY > 120 && allDeltasDivisableBy(deltaY); // win64 
+    var dpiScaledWheelDelta = deltaY > 120 && allDeltasDivisableBy(deltaY); // win64
     return !allDeltasDivisableBy(120) && !allDeltasDivisableBy(100) && !dpiScaledWheelDelta;
-} 
+}
 
 function isDivisible(n, divisor) {
     return (Math.floor(n / divisor) == n / divisor);
@@ -633,7 +633,7 @@ function isInsideYoutubeVideo(event) {
     var isControl = false;
     if (document.URL.indexOf ('www.youtube.com/watch') != -1) {
         do {
-            isControl = (elem.classList && 
+            isControl = (elem.classList &&
                          elem.classList.contains('html5-video-controls'));
             if (isControl) break;
         } while ((elem = elem.parentNode));
@@ -648,7 +648,7 @@ function getScrollRoot() {
 /***********************************************
  * PULSE (by Michael Herf)
  ***********************************************/
- 
+
 /**
  * Viscous fluid with a pulse for part and decay for the rest.
  * - Applies a fixed force over an interval (a damped acceleration), and
@@ -683,7 +683,7 @@ function pulse(x) {
 }
 
 // new standard wheel event from Chrome 31+
-var wheelEvent = 'onwheel' in document.createElement('div') ? 'wheel' : 'mousewheel'; 
+var wheelEvent = 'onwheel' in document.createElement('div') ? 'wheel' : 'mousewheel';
 
 addEvent(wheelEvent, wheel);
 addEvent('mousedown', mousedown);
