@@ -2,7 +2,7 @@
 var defaultOptions = {
 
     // Plugin
-    middleMouse       : true, 
+    middleMouse       : true,
 
     // Scrolling Core
     framerate         : 150, // [Hz]
@@ -25,13 +25,13 @@ var defaultOptions = {
 
     // Other
     touchpadSupport   : true,
-    fixedBackground   : true, 
-    excluded          : "example.com, another.example.com"    
+    fixedBackground   : true,
+    excluded          : "example.com, another.example.com"
 }
 
 
-// Fired when the extension is first installed, 
-// when the extension is updated to a new version, 
+// Fired when the extension is first installed,
+// when the extension is updated to a new version,
 // and when Chrome is updated to a new version.
 chrome.runtime.onInstalled.addListener(init);
 
@@ -49,10 +49,6 @@ function init(details) {
 function addSmoothScrollToTab(tab) {
     chrome.tabs.executeScript(tab.id, {
         file: "src/sscr.js",
-        allFrames: true
-    });
-    chrome.tabs.executeScript(tab.id, {
-        file: "src/middlemouse.js",
         allFrames: true
     });
 }
