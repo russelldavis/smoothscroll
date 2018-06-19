@@ -112,7 +112,9 @@ function init() {
     var windowHeight = window.innerHeight;
     var scrollHeight = body.scrollHeight;
 
-    // check compat mode for root element
+    // Some properties like scrollTop are only set on either body or
+    // documentElement, depending on quirks mode.
+    // See https://bugs.chromium.org/p/chromium/issues/detail?id=157855.
     root = (document.compatMode.indexOf('CSS') >= 0) ? html : body;
     activeElement = body;
 
@@ -205,8 +207,6 @@ function scrollArray(elem, left, top) {
         return;
     }
 
-    var scrollWindow = (elem === document.body);
-
     var step = function (time) {
 
         var now = Date.now();
@@ -250,14 +250,8 @@ function scrollArray(elem, left, top) {
             //scrollY /= window.devicePixelRatio;
         }
 
-        // scroll left and top
-        if (scrollWindow) {
-            window.scrollBy(scrollX, scrollY);
-        }
-        else {
-            if (scrollX) elem.scrollLeft += scrollX;
-            if (scrollY) elem.scrollTop  += scrollY;
-        }
+        if (scrollX) elem.scrollLeft += scrollX;
+        if (scrollY) elem.scrollTop  += scrollY;
 
         // clean up if there's nothing left to do
         if (!left && !top) {
@@ -348,14 +342,6 @@ function keydown(event) {
 
     var clientHeight = overflowing.clientHeight;
     var shift, x = 0, y = 0;
-
-    if (overflowing == document.body) {
-        // Some properties like scrollTop are only set on either body or
-        // documentElement, depending on quirks mode.
-        // See https://bugs.chromium.org/p/chromium/issues/detail?id=157855.
-        overflowing = root;
-        clientHeight = window.innerHeight;
-    }
 
     switch (event.keyCode) {
         case key.up:
@@ -470,7 +456,7 @@ function overflowingAncestor(el, x) {
             var isOverflowCSS = topOverflowsNotHidden || overflowAutoOrScroll(root, x);
             if (isFrame && isContentOverflowing(root, x) ||
                !isFrame && isOverflowCSS) {
-                return setCache(elems, getScrollRoot(), x);
+                return setCache(elems, root, x);
             }
         } else if (isContentOverflowing(el, x) && overflowAutoOrScroll(el, x)) {
             return setCache(elems, el, x);
@@ -495,7 +481,7 @@ function overflowingElement(el, x) {
         var isOverflowCSS = topOverflowsNotHidden || overflowAutoOrScroll(root, x);
         if (isFrame && isContentOverflowing(root, x) ||
            !isFrame && isOverflowCSS) {
-            return setCache(elems, getScrollRoot(), x);
+            return setCache(elems, root, x);
         }
     } else if (isContentOverflowing(el, x) && overflowAutoOrScroll(el, x)) {
         return setCache(elems, el, x);
@@ -564,10 +550,6 @@ function isInsideYoutubeVideo(event) {
         } while ((elem = elem.parentNode));
     }
     return isControl;
-}
-
-function getScrollRoot() {
-    return document.body; // scrolling root in WebKit
 }
 
 /***********************************************
