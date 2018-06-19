@@ -39,6 +39,7 @@ var options = defaultOptions;
 
 
 // Other Variables
+var isEnabled = true;
 var isExcluded = false;
 var isFrame = false;
 var direction = { x: 0, y: 0 };
@@ -279,6 +280,14 @@ function scrollArray(elem, left, top) {
  * @param {Object} event
  */
 function keydown(event) {
+    if (event.altKey && event.shiftKey && event.code === "Backslash") {
+        isEnabled = !isEnabled;
+        console.log("SmoothScroll enabled: " + isEnabled);
+        event.preventDefault();
+        return false;
+    }
+    if (!isEnabled) return true;
+
     var target   = event.target;
     var modifier = event.ctrlKey || event.altKey ||
                   (event.metaKey && event.keyCode !== key.down && event.keyCode !== key.up) ||
