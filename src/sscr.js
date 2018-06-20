@@ -468,6 +468,12 @@ function overflowingAncestor(el, x) {
                 return setCache(elems, root, x);
             }
         } else if (isContentOverflowing(el, x) && overflowAutoOrScroll(el, x)) {
+            // Hack for pages where el is body and the `rootScrollHeight === el.scrollHeight` check above
+            // isn't true because of some elements with margin/padding, e.g. at https://arp242.net/weblog/yaml_probably_not_so_great_after_all.html
+            // TODO: fix this in a cleaner way
+            if (el === document.body && isContentOverflowing(root, x)) {
+                el = root;
+            }
             return setCache(elems, el, x);
         }
     } while ((el = el.parentElement));
