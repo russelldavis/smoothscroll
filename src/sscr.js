@@ -45,7 +45,7 @@ var isFrame = false;
 var direction = { x: 0, y: 0 };
 var initDone  = false;
 var root = document.documentElement;
-var activeElement;
+var targetElement;
 var observer;
 var isMac = /^Mac/.test(navigator.platform);
 var isWin = /Windows/i.test(navigator.userAgent);
@@ -117,7 +117,7 @@ function init() {
     // documentElement, depending on quirks mode.
     // See https://bugs.chromium.org/p/chromium/issues/detail?id=157855.
     root = (document.compatMode.indexOf('CSS') >= 0) ? html : body;
-    activeElement = body;
+    targetElement = body;
 
     // Checks if this script is running in a frame
     if (top != self) {
@@ -293,22 +293,20 @@ function keydown(event) {
                   (event.metaKey && event.keyCode !== key.down && event.keyCode !== key.up) ||
                   (event.shiftKey && event.keyCode !== key.spacebar);
 
-    // Our own tracked active element could've been deactive by being removed from the DOM
-    // or made invisible.
-    let newActiveElement = document.activeElement;
-    if (newActiveElement !== activeElement) {
-        if (newActiveElement === document.body) {
+    // our own tracked active element could've been removed from the DOM
+    if (!document.contains(targetElement)) {
+        targetElement = document.activeElement;
+        if (targetElement === document.body) {
             // Chrome resets it to the body when an element goes away,
             // but often the thing that's being scrolled is a child.
             // Let's try to find it.
             for (let elem of document.body.children) {
                 if (overflowingElement(elem, false)) {
-                    newActiveElement = elem;
+                    targetElement = elem;
                     break;
                 }
             }
         }
-        activeElement = newActiveElement;
     }
 
     // do nothing if user is editing text
@@ -320,7 +318,7 @@ function keydown(event) {
     if ( event.defaultPrevented ||
          inputNodeNames.test(target.nodeName) ||
          isNodeName(target, 'input') && !buttonTypes.test(target.type) ||
-         isNodeName(activeElement, 'video') ||
+         isNodeName(targetElement, 'video') ||
          isInsideYoutubeVideo(event) ||
          target.isContentEditable ||
          modifier ) {
@@ -341,7 +339,7 @@ function keydown(event) {
     }
 
     var xOnly = (event.keyCode == key.left || event.keyCode == key.right);
-    var overflowing = overflowingAncestor(activeElement, xOnly);
+    var overflowing = overflowingAncestor(targetElement, xOnly);
 
     if (!overflowing) {
         // iframes seem to eat key events, which we need to propagate up
@@ -399,10 +397,13 @@ function keydown(event) {
 }
 
 /**
- * Mousedown event only for updating activeElement
+ * Mousedown event only for updating targetElement.
+ * This is necessary because, depending on the properties of the element being
+ * clicked on, the browser might not update document.activeElement, even when
+ * clicking on an element with scrollbars.
  */
 function mousedown(event) {
-    activeElement = event.target;
+    targetElement = event.target;
 }
 
 
