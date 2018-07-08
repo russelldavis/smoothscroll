@@ -293,8 +293,14 @@ function keydown(event) {
                   (event.metaKey && event.keyCode !== key.down && event.keyCode !== key.up) ||
                   (event.shiftKey && event.keyCode !== key.spacebar);
 
-    // our own tracked active element could've been removed from the DOM
-    if (!document.contains(targetElement)) {
+    // Our own tracked active element could've been removed from the DOM (e.g. on twitter clicking
+    // "Show more replies") or made invisible (e.g. on twitter when closing an image popup by
+    // clicking outside it in the Gallery-closetarget grey area). Checking null offsetParent
+    // catches either case. (Do nothing when targetElement is already document.body, since that
+    // *never* has an offsetParent, and should never be getting removed or made invisible. We want
+    // to keep the target as the body when a page (e.g. swift.org) has a scrollable body as well
+    // as a scrollable child of body.
+    if (targetElement !== document.body && !targetElement.offsetParent) {
         targetElement = document.activeElement;
         if (targetElement === document.body) {
             // Chrome resets it to the body when an element goes away,
