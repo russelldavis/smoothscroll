@@ -25,12 +25,10 @@ var defaultOptions = {
     accelerationDelta : 50,  // 20
     accelerationMax   : 3,   // 1
 
-    // Keyboard Settings
     keyboardSupport   : true,  // option
     arrowScroll       : 50,     // [px]
 
     // Other
-    touchpadSupport   : false,
     fixedBackground   : true,
     excluded          : ''
 };
@@ -75,12 +73,6 @@ chrome.storage.sync.get(defaultOptions, function (syncedOptions) {
  * Tests if smooth scrolling is allowed. Shuts down everything if not.
  */
 function initTest() {
-
-    // disable keyboard support if the user said so
-    if (!options.keyboardSupport) {
-        removeEvent('keydown', keydown);
-    }
-
     // disable everything if the page is blacklisted
     if (options.excluded) {
         var domains = options.excluded.split(/[,\n] ?/);
@@ -139,6 +131,9 @@ function init() {
         body.style.backgroundAttachment = 'scroll';
         html.style.backgroundAttachment = 'scroll';
     }
+
+    addEvent('mousedown', mousedown);
+    addEvent('keydown', keydown);
 }
 
 /**
@@ -154,13 +149,7 @@ function cleanup() {
  * key event handlers (e.g for <video>) can come before us
  */
 function loaded() {
-    setTimeout(function () {
-        init();
-        if (options.keyboardSupport) {
-            removeEvent('keydown', keydown);
-            addEvent('keydown', keydown);
-        }
-    }, 1);
+    setTimeout(init, 1);
 }
 
 
@@ -609,6 +598,4 @@ function pulse(x) {
     return pulse_(x);
 }
 
-addEvent('mousedown', mousedown);
-addEvent('keydown', keydown);
 addEvent('load', loaded);
