@@ -46,7 +46,6 @@ var direction = { x: 0, y: 0 };
 var initDone  = false;
 var root = document.documentElement;
 var targetElement;
-var observer;
 var isMac = /^Mac/.test(navigator.platform);
 var isWin = /Windows/i.test(navigator.userAgent);
 
@@ -146,7 +145,6 @@ function init() {
  * Removes event listeners and other traces left on the page.
  */
 function cleanup() {
-    observer && observer.disconnect();
     removeEvent('mousedown', mousedown);
     removeEvent('keydown', keydown);
 }
