@@ -92,8 +92,20 @@ function initTest() {
  * Sets up scrolls array, determines if frames are involved.
  */
 function init() {
-
     if (initDone || isExcluded || !document.body) {
+        return;
+    }
+
+    if (!document.scrollingElement) {
+        // document.scrollingElement is only null in a rare circumstance that's not worth special-casing:
+        // when the document is in quirks mode and the body element is "potentially scrollable" which only
+        // seems to be true when, for example, both the html element and the body element have a property
+        // like `overflow-x: hidden`. See https://drafts.csswg.org/cssom-view/#dom-document-scrollingelement
+        // for details.
+        //
+        // To handle those pages, we'd need to replace a bunch of properties like document.scrollTop with
+        // their equivalent from the window object (like window.scrollY). Not currently a priority.
+        console.log("SmoothScroll is disabled due to quirks mode document with null scrollingElement");
         return;
     }
 
