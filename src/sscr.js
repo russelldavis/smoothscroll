@@ -536,11 +536,11 @@ function overflowAutoOrScroll(el, x) {
  ***********************************************/
 
 function addEvent(type, fn) {
-    window.addEventListener(type, fn, false);
+    window.addEventListener(type, fn, true);
 }
 
 function removeEvent(type, fn) {
-    window.removeEventListener(type, fn, false);
+    window.removeEventListener(type, fn, true);
 }
 
 function isNodeName(el, tag) {
