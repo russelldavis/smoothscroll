@@ -306,7 +306,7 @@ function keydown(event) {
             // but often the thing that's being scrolled is a child.
             // Let's try to find it.
             for (let elem of document.body.children) {
-                if (overflowingElement(elem, false)) {
+                if (overflowingElement(elem)) {
                     targetElement = elem;
                     break;
                 }
@@ -344,7 +344,7 @@ function keydown(event) {
     }
 
     var xOnly = (event.keyCode == key.left || event.keyCode == key.right);
-    var overflowing = overflowingAncestor(targetElement, xOnly);
+    var overflowing = overflowingAncestor(targetElement);
 
     if (!overflowing) {
         // iframes seem to eat key events, which we need to propagate up
@@ -353,7 +353,7 @@ function keydown(event) {
     }
 
     var clientHeight = overflowing.clientHeight;
-    var shift, x = 0, y = 0;
+    var shift, y = 0;
 
     switch (event.keyCode) {
         case key.up:
@@ -386,17 +386,11 @@ function keydown(event) {
         case key.pagedown:
             y = clientHeight * 0.9;
             break;
-        case key.left:
-            x = -options.arrowScroll;
-            break;
-        case key.right:
-            x = options.arrowScroll;
-            break;
         default:
             return true; // a key we don't care about
     }
 
-    scrollArray(overflowing, x, y);
+    scrollArray(overflowing, 0, y);
     event.preventDefault();
     scheduleClearCache();
 }
@@ -423,28 +417,24 @@ var uniqueID = (function () {
     };
 })();
 
-var cacheX = {}; // cleared out after a scrolling session
 var cacheY = {}; // cleared out after a scrolling session
 var clearCacheTimer;
-
-//setInterval(function () { cache = {}; }, 10 * 1000);
 
 function scheduleClearCache() {
     clearTimeout(clearCacheTimer);
     clearCacheTimer = setInterval(function () {
-        cacheX = cacheY = {};
+        cacheY = {};
     }, 1*1000);
 }
 
-function setCache(elems, overflowing, x) {
-    var cache = x ? cacheX : cacheY;
+function setCache(elems, overflowing) {
     for (var i = elems.length; i--;)
-        cache[uniqueID(elems[i])] = overflowing;
+        cacheY[uniqueID(elems[i])] = overflowing;
     return overflowing;
 }
 
-function getCache(el, x) {
-    return (x ? cacheX : cacheY)[uniqueID(el)];
+function getCache(el) {
+    return cacheY[uniqueID(el)];
 }
 
 //  (body)                (root)
@@ -454,80 +444,76 @@ function getCache(el, x) {
 // scroll  |   no   |   YES   |   YES  |   YES  |
 // auto    |   no   |   YES   |   YES  |   YES  |
 
-function overflowingAncestor(el, x) {
+function overflowingAncestor(el) {
     var elems = [];
     var body = document.body;
     var rootScrollHeight = root.scrollHeight;
     var rootScrollWidth  = root.scrollWidth;
     do {
-        var cached = getCache(el, x);
+        var cached = getCache(el);
         if (cached) {
-            return setCache(elems, cached, x);
+            return setCache(elems, cached);
         }
         elems.push(el);
-        if (x && rootScrollWidth  === el.scrollWidth ||
-           !x && rootScrollHeight === el.scrollHeight) {
-            var topOverflowsNotHidden = overflowNotHidden(root, x) && overflowNotHidden(body, x);
-            var isOverflowCSS = topOverflowsNotHidden || overflowAutoOrScroll(root, x);
-            if (isFrame && isContentOverflowing(root, x) ||
+        if (rootScrollHeight === el.scrollHeight) {
+            var topOverflowsNotHidden = overflowNotHidden(root) && overflowNotHidden(body);
+            var isOverflowCSS = topOverflowsNotHidden || overflowAutoOrScroll(root);
+            if (isFrame && isContentOverflowing(root) ||
                !isFrame && isOverflowCSS) {
-                return setCache(elems, root, x);
+                return setCache(elems, root);
             }
-        } else if (isContentOverflowing(el, x) && overflowAutoOrScroll(el, x)) {
+        } else if (isContentOverflowing(el) && overflowAutoOrScroll(el)) {
             // Hack for pages where el is body and the `rootScrollHeight === el.scrollHeight` check above
             // isn't true because of some elements with margin/padding, e.g. at https://arp242.net/weblog/yaml_probably_not_so_great_after_all.html
             // TODO: fix this in a cleaner way
-            if (el === document.body && isContentOverflowing(root, x)) {
+            if (el === document.body && isContentOverflowing(root)) {
                 el = root;
             }
-            return setCache(elems, el, x);
+            return setCache(elems, el);
         }
     } while ((el = el.parentElement));
 }
 
 // HACK: copied from overflowAncestor, just removed the loop
-function overflowingElement(el, x) {
+function overflowingElement(el) {
     var elems = [];
     var body = document.body;
     var rootScrollHeight = root.scrollHeight;
     var rootScrollWidth  = root.scrollWidth;
-    var cached = getCache(el, x);
+    var cached = getCache(el);
     if (cached) {
-        return setCache(elems, cached, x);
+        return setCache(elems, cached);
     }
     elems.push(el);
-    if (x && rootScrollWidth  === el.scrollWidth ||
-       !x && rootScrollHeight === el.scrollHeight) {
-        var topOverflowsNotHidden = overflowNotHidden(root, x) && overflowNotHidden(body, x);
-        var isOverflowCSS = topOverflowsNotHidden || overflowAutoOrScroll(root, x);
-        if (isFrame && isContentOverflowing(root, x) ||
+    if (rootScrollHeight === el.scrollHeight) {
+        var topOverflowsNotHidden = overflowNotHidden(root) && overflowNotHidden(body);
+        var isOverflowCSS = topOverflowsNotHidden || overflowAutoOrScroll(root);
+        if (isFrame && isContentOverflowing(root) ||
            !isFrame && isOverflowCSS) {
-            return setCache(elems, root, x);
+            return setCache(elems, root);
         }
-    } else if (isContentOverflowing(el, x) && overflowAutoOrScroll(el, x)) {
-        return setCache(elems, el, x);
+    } else if (isContentOverflowing(el) && overflowAutoOrScroll(el)) {
+        return setCache(elems, el);
     }
     return false;
 }
 
-function isContentOverflowing(el, x) {
-    return x ? (el.clientWidth  + 10 < el.scrollWidth)
-             : (el.clientHeight + 10 < el.scrollHeight);
+function isContentOverflowing(el) {
+    return el.clientHeight + 10 < el.scrollHeight;
 }
 
-function computedOverflow(el, x) {
-    var property = x ? 'overflow-x' : 'overflow-y';
-    return getComputedStyle(el, '').getPropertyValue(property);
+function computedOverflow(el) {
+    return getComputedStyle(el, '').getPropertyValue('overflow-y');
 }
 
 // typically for <body> and <html>
-function overflowNotHidden(el, x) {
-    return (computedOverflow(el, x) != 'hidden');
+function overflowNotHidden(el) {
+    return (computedOverflow(el) != 'hidden');
 }
 
 // for all other elements
-function overflowAutoOrScroll(el, x) {
-    return /^(scroll|auto)$/.test(computedOverflow(el, x));
+function overflowAutoOrScroll(el) {
+    return /^(scroll|auto)$/.test(computedOverflow(el));
 }
 
 
