@@ -74,16 +74,17 @@ chrome.storage.sync.get(defaultOptions, function (syncedOptions) {
  */
 function initTest() {
     // disable everything if the page is blacklisted
-    if (options.excluded) {
-        var domains = options.excluded.split(/[,\n] ?/);
-        domains.push('mail.google.com'); // exclude Gmail for now
-        domains.push('play.google.com/music'); // problem with Polymer elements
-        for (var i = domains.length; i--;) {
-            if (document.URL.indexOf(domains[i]) > -1) {
-                isExcluded = true;
-                cleanup();
-                return;
-            }
+    var domains = options.excluded.split(/[,\n] ?/);
+    domains.push('mail.google.com'); // exclude Gmail for now
+    domains.push('play.google.com/music'); // problem with Polymer elements
+    domains.push('strava.com'); // slow scrolling for some reason
+    for (var i = domains.length; i--;) {
+        // domains[i] can be empty if options.excluded is empty, or if there are blank lines
+        if (domains[i] && (document.URL.indexOf(domains[i]) > -1)) {
+            console.log("SmoothScroll is disabled for " + domains[i]);
+            isExcluded = true;
+            cleanup();
+            return;
         }
     }
 }
