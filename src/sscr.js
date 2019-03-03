@@ -208,6 +208,13 @@ function scrollArray(elem, left, top) {
         return;
     }
 
+    // if we haven't already fixed the behavior,
+    // and it needs fixing for this sesh
+    if (elem.$scrollBehavior == null && isScrollBehaviorSmooth(elem)) {
+        elem.$scrollBehavior = elem.style.scrollBehavior;
+        elem.style.scrollBehavior = 'auto';
+    }
+
     var step = function (time) {
 
         var now = Date.now();
@@ -263,6 +270,11 @@ function scrollArray(elem, left, top) {
             pending = window.requestAnimationFrame(step);
         } else {
             pending = null;
+            // restore default behavior at the end of scrolling sesh
+            if (elem.$scrollBehavior != null) {
+                elem.style.scrollBehavior = elem.$scrollBehavior;
+                elem.$scrollBehavior = null;
+            }
         }
     };
 
@@ -420,11 +432,13 @@ var uniqueID = (function () {
 
 var cacheY = {}; // cleared out after a scrolling session
 var clearCacheTimer;
+var smoothBehaviorForElement = {};
 
 function scheduleClearCache() {
     clearTimeout(clearCacheTimer);
     clearCacheTimer = setInterval(function () {
         cacheY = {};
+        smoothBehaviorForElement = {};
     }, 1*1000);
 }
 
@@ -517,6 +531,14 @@ function overflowAutoOrScroll(el) {
     return /^(scroll|auto)$/.test(computedOverflow(el));
 }
 
+function isScrollBehaviorSmooth(el) {
+    var id = uniqueID(el);
+    if (smoothBehaviorForElement[id] == null) {
+        var scrollBehavior = getComputedStyle(el, '')['scroll-behavior'];
+        smoothBehaviorForElement[id] = ('smooth' == scrollBehavior);
+    }
+    return smoothBehaviorForElement[id];
+}
 
 /***********************************************
  * HELPERS
