@@ -301,6 +301,12 @@ function keydown(event) {
     if (!isEnabled) return true;
 
     var target   = event.target;
+    // See https://stackoverflow.com/questions/47737652/detect-if-dom-element-is-custom-web-component-or-html-element
+    if (target.tagName.includes("-") && target.composedPath) {
+        // The target is a webcomponent. Get the real (inner) target.
+        // See https://stackoverflow.com/questions/57963312/get-event-target-inside-a-web-component
+        target = target.composedPath()[0];
+    }
     var modifier = event.ctrlKey || event.altKey ||
                   (event.metaKey && event.keyCode !== key.down && event.keyCode !== key.up) ||
                   (event.shiftKey && event.keyCode !== key.spacebar);
