@@ -44,8 +44,6 @@ var direction = { x: 0, y: 0 };
 var initDone  = false;
 var root = document.documentElement;
 var targetElement;
-var isMac = /^Mac/.test(navigator.platform);
-var isWin = /Windows/i.test(navigator.userAgent);
 
 var key = { left: 37, up: 38, right: 39, down: 40, spacebar: 32,
             pageup: 33, pagedown: 34, end: 35, home: 36 };
@@ -55,6 +53,7 @@ var arrowKeys = { 37: 1, 38: 1, 39: 1, 40: 1 };
  * SETTINGS
  ***********************************************/
 
+// noinspection JSUnresolvedVariable
 chrome.storage.sync.get(defaultOptions, function (syncedOptions) {
 
     options = syncedOptions;
@@ -75,7 +74,6 @@ chrome.storage.sync.get(defaultOptions, function (syncedOptions) {
 function initTest() {
     // disable everything if the page is blacklisted
     var domains = options.excluded.split(/[,\n] ?/);
-    domains.push('mail.google.com'); // exclude Gmail for now
     domains.push('play.google.com/music'); // problem with Polymer elements
     domains.push('strava.com'); // slow scrolling for some reason
     for (var i = domains.length; i--;) {
@@ -124,7 +122,7 @@ function init() {
     targetElement = body;
 
     // Checks if this script is running in a frame
-    if (top != self) {
+    if (top !== self) {
         isFrame = true;
     }
 
@@ -179,8 +177,8 @@ var lastScroll = Date.now();
  */
 function scrollArray(elem, left, top) {
     directionCheck(left, top);
-
-    if (options.accelerationMax != 1) {
+    console.log(options);
+    if (options.accelerationMax !== 1) {
         var now = Date.now();
         var elapsed = now - lastScroll;
         if (elapsed < options.accelerationDelta) {
@@ -215,14 +213,13 @@ function scrollArray(elem, left, top) {
         elem.style.scrollBehavior = 'auto';
     }
 
-    var step = function (time) {
+    var step = function (_time) {
 
         var now = Date.now();
         var scrollX = 0;
         var scrollY = 0;
 
         for (var i = 0; i < que.length; i++) {
-
             var item = que[i];
             var elapsed  = now - item.start;
             var finished = (elapsed >= options.animationTime);
@@ -357,12 +354,11 @@ function keydown(event) {
     }
 
     // [arrwow keys] on radio buttons should be left alone
-    if (isNodeName(target, 'input') && target.type == 'radio' &&
+    if (isNodeName(target, 'input') && target.type === 'radio' &&
         arrowKeys[event.keyCode])  {
       return true;
     }
 
-    var xOnly = (event.keyCode == key.left || event.keyCode == key.right);
     var overflowing = overflowingAncestor(targetElement);
 
     if (!overflowing) {
@@ -408,7 +404,6 @@ function keydown(event) {
         default:
             return true; // a key we don't care about
     }
-
     scrollArray(overflowing, 0, y);
     event.preventDefault();
     scheduleClearCache();
@@ -445,7 +440,7 @@ function scheduleClearCache() {
     clearCacheTimer = setInterval(function () {
         cacheY = {};
         smoothBehaviorForElement = {};
-    }, 1*1000);
+    }, 1000);
 }
 
 function setCache(elems, overflowing) {
@@ -469,7 +464,6 @@ function overflowingAncestor(el) {
     var elems = [];
     var body = document.body;
     var rootScrollHeight = root.scrollHeight;
-    var rootScrollWidth  = root.scrollWidth;
     do {
         var cached = getCache(el);
         if (cached) {
@@ -500,7 +494,6 @@ function overflowingElement(el) {
     var elems = [];
     var body = document.body;
     var rootScrollHeight = root.scrollHeight;
-    var rootScrollWidth  = root.scrollWidth;
     var cached = getCache(el);
     if (cached) {
         return setCache(elems, cached);
@@ -529,7 +522,7 @@ function computedOverflow(el) {
 
 // typically for <body> and <html>
 function overflowNotHidden(el) {
-    return (computedOverflow(el) != 'hidden');
+    return (computedOverflow(el) !== 'hidden');
 }
 
 // for all other elements
@@ -541,7 +534,7 @@ function isScrollBehaviorSmooth(el) {
     var id = uniqueID(el);
     if (smoothBehaviorForElement[id] == null) {
         var scrollBehavior = getComputedStyle(el, '')['scroll-behavior'];
-        smoothBehaviorForElement[id] = ('smooth' == scrollBehavior);
+        smoothBehaviorForElement[id] = ('smooth' === scrollBehavior);
     }
     return smoothBehaviorForElement[id];
 }
@@ -578,7 +571,7 @@ function directionCheck(x, y) {
 function isInsideYoutubeVideo(event) {
     var elem = event.target;
     var isControl = false;
-    if (document.URL.indexOf ('www.youtube.com/watch') != -1) {
+    if (document.URL.indexOf ('www.youtube.com/watch') !== -1) {
         do {
             isControl = (elem.classList &&
                          elem.classList.contains('html5-video-controls'));
@@ -619,7 +612,7 @@ function pulse(x) {
     if (x >= 1) return 1;
     if (x <= 0) return 0;
 
-    if (options.pulseNormalize == 1) {
+    if (options.pulseNormalize === 1) {
         options.pulseNormalize /= pulse_(1);
     }
     return pulse_(x);
