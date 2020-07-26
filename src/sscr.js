@@ -179,7 +179,6 @@ var lastScroll = Date.now();
  */
 function scrollArray(elem, left, top) {
     directionCheck(left, top);
-    console.log(options);
     if (options.accelerationMax !== 1) {
         var now = Date.now();
         var elapsed = now - lastScroll;
@@ -309,7 +308,7 @@ function findScrollableChild(root) {
 
 /**
  * Keydown event handler.
- * @param {Object} event
+ * @param {KeyboardEvent} event
  */
 function keydown(event) {
     if (event.altKey && event.shiftKey && event.code === "Backslash") {
@@ -320,12 +319,15 @@ function keydown(event) {
     }
     if (!isEnabled) return;
 
-    var target   = event.target;
+    /** @type HTMLElement */
+    // @ts-ignore downcast
+    var target = event.target;
     // See https://stackoverflow.com/questions/47737652/detect-if-dom-element-is-custom-web-component-or-html-element
-    if (target.tagName.includes("-") && target.composedPath) {
+    if (target.tagName.includes("-") && event.composedPath) {
         // The target is a webcomponent. Get the real (inner) target.
         // See https://stackoverflow.com/questions/57963312/get-event-target-inside-a-web-component
-        target = target.composedPath()[0];
+        // @ts-ignore downcast
+        target = event.composedPath()[0];
     }
     var modifier = event.ctrlKey || event.altKey ||
                   (event.metaKey && event.keyCode !== key.down && event.keyCode !== key.up) ||
@@ -361,7 +363,7 @@ function keydown(event) {
     var buttonTypes = /^(button|submit|radio|checkbox|file|color|image)$/i;
     if ( event.defaultPrevented ||
          inputNodeNames.test(target.nodeName) ||
-         isNodeName(target, 'input') && !buttonTypes.test(target.type) ||
+         target instanceof HTMLInputElement && !buttonTypes.test(target.type) ||
          isNodeName(targetElement, 'video') ||
          isInsideYoutubeVideo(event) ||
          target.isContentEditable ||
@@ -371,13 +373,13 @@ function keydown(event) {
 
     // [spacebar] should trigger button press, leave it alone
     if ((isNodeName(target, 'button') ||
-         isNodeName(target, 'input') && buttonTypes.test(target.type)) &&
+         target instanceof HTMLInputElement && buttonTypes.test(target.type)) &&
         event.keyCode === key.spacebar) {
       return;
     }
 
     // [arrwow keys] on radio buttons should be left alone
-    if (isNodeName(target, 'input') && target.type === 'radio' &&
+    if (target instanceof HTMLInputElement && target.type === 'radio' &&
         arrowKeys[event.keyCode])  {
       return;
     }
