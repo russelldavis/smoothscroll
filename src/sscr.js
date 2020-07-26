@@ -281,6 +281,27 @@ function scrollArray(elem, left, top) {
     pending = window.requestAnimationFrame(step);
 }
 
+function findScrollableChild(root) {
+    let scrollers = [];
+    console.time("findScrollableChild");
+    let walker = document.createTreeWalker(
+        root,
+        NodeFilter.SHOW_ELEMENT,
+        {
+            acceptNode: function(/** @type {Element} */ node) {
+                if (getComputedStyle(node)["overflow-y"] === "scroll") {
+                    scrollers.push(node);
+                    return NodeFilter.FILTER_REJECT;
+                }
+                return NodeFilter.FILTER_SKIP;
+            }
+        }
+    );
+    let res = walker.nextNode();
+    console.assert(res === null, "nextNode returned non-null:", res)
+    console.timeEnd("findScrollableChild");
+    return null;
+}
 
 /***********************************************
  * EVENTS
@@ -364,13 +385,24 @@ function keydown(event) {
     var overflowing = overflowingAncestor(targetElement);
 
     if (!overflowing) {
-        // iframes seem to eat key events, which we need to propagate up
-        // if the iframe has nothing overflowing to scroll
-        if (isFrame) {
-            // @ts-ignore this is our own global keydown function
-            parent.keydown(event);
+        // We couldn't find a scrollable ancestor. Look for a scrollable child.
+        if (lastScrollableSearchRoot !== targetElement) {
+            lastScrollableSearchRoot = targetElement;
+            overflowing = findScrollableChild(targetElement);
+            if (overflowing) {
+                targetElement = overflowing;
+            }
         }
-        return;
+
+        if (!overflowing) {
+            // iframes seem to eat key events, which we need to propagate up
+            // if the iframe has nothing overflowing to scroll
+            if (isFrame) {
+                // @ts-ignore this is our own global keydown function
+                parent.keydown(event);
+            }
+            return;
+        }
     }
 
     var clientHeight = overflowing.clientHeight;
