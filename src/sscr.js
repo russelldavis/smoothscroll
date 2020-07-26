@@ -49,13 +49,15 @@ var key = { left: 37, up: 38, right: 39, down: 40, spacebar: 32,
             pageup: 33, pagedown: 34, end: 35, home: 36 };
 var arrowKeys = { 37: 1, 38: 1, 39: 1, 40: 1 };
 
+let lastScrollableSearchRoot = null;
+
 /***********************************************
  * SETTINGS
  ***********************************************/
 
-// noinspection JSUnresolvedVariable
 chrome.storage.sync.get(defaultOptions, function (syncedOptions) {
 
+    // @ts-ignore
     options = syncedOptions;
 
     // it seems that sometimes settings come late
@@ -293,9 +295,9 @@ function keydown(event) {
         isEnabled = !isEnabled;
         console.log("SmoothScroll enabled: " + isEnabled);
         event.preventDefault();
-        return false;
+        return;
     }
-    if (!isEnabled) return true;
+    if (!isEnabled) return;
 
     var target   = event.target;
     // See https://stackoverflow.com/questions/47737652/detect-if-dom-element-is-custom-web-component-or-html-element
@@ -343,20 +345,20 @@ function keydown(event) {
          isInsideYoutubeVideo(event) ||
          target.isContentEditable ||
          modifier ) {
-      return true;
+      return;
     }
 
     // [spacebar] should trigger button press, leave it alone
     if ((isNodeName(target, 'button') ||
          isNodeName(target, 'input') && buttonTypes.test(target.type)) &&
         event.keyCode === key.spacebar) {
-      return true;
+      return;
     }
 
     // [arrwow keys] on radio buttons should be left alone
     if (isNodeName(target, 'input') && target.type === 'radio' &&
         arrowKeys[event.keyCode])  {
-      return true;
+      return;
     }
 
     var overflowing = overflowingAncestor(targetElement);
@@ -364,7 +366,11 @@ function keydown(event) {
     if (!overflowing) {
         // iframes seem to eat key events, which we need to propagate up
         // if the iframe has nothing overflowing to scroll
-        return isFrame ? parent.keydown(event) : true;
+        if (isFrame) {
+            // @ts-ignore this is our own global keydown function
+            parent.keydown(event);
+        }
+        return;
     }
 
     var clientHeight = overflowing.clientHeight;
@@ -402,7 +408,7 @@ function keydown(event) {
             y = clientHeight * 0.9;
             break;
         default:
-            return true; // a key we don't care about
+            return; // a key we don't care about
     }
     scrollArray(overflowing, 0, y);
     event.preventDefault();
@@ -487,6 +493,7 @@ function overflowingAncestor(el) {
             return setCache(elems, el);
         }
     } while ((el = el.parentElement));
+    return null;
 }
 
 // HACK: copied from overflowAncestor, just removed the loop
