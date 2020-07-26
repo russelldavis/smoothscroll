@@ -280,9 +280,9 @@ function scrollArray(elem, left, top) {
     pending = window.requestAnimationFrame(step);
 }
 
-function findScrollableChild(root) {
+function findScrollable(root) {
     let scrollers = [];
-    console.time("findScrollableChild");
+    console.time("findScrollable");
     let walker = document.createTreeWalker(
         root,
         NodeFilter.SHOW_ELEMENT,
@@ -298,8 +298,17 @@ function findScrollableChild(root) {
     );
     let res = walker.nextNode();
     console.assert(res === null, "nextNode returned non-null:", res)
-    console.timeEnd("findScrollableChild");
-    return null;
+
+    let maxWidth = 0;
+    let widestEl = null;
+    for (let scroller of scrollers) {
+        if (scroller.clientWidth > maxWidth) {
+            maxWidth = scroller.clientWidth;
+            widestEl = scroller;
+        }
+    }
+    console.timeEnd("findScrollable");
+    return widestEl;
 }
 
 /***********************************************
@@ -384,13 +393,14 @@ function keydown(event) {
       return;
     }
 
+    // console.log("target: ", targetElement);
     var overflowing = overflowingAncestor(targetElement);
 
     if (!overflowing) {
         // We couldn't find a scrollable ancestor. Look for a scrollable child.
         if (lastScrollableSearchRoot !== targetElement) {
             lastScrollableSearchRoot = targetElement;
-            overflowing = findScrollableChild(targetElement);
+            overflowing = findScrollable(document.body);
             if (overflowing) {
                 targetElement = overflowing;
             }
@@ -445,8 +455,13 @@ function keydown(event) {
             return; // a key we don't care about
     }
     scrollArray(overflowing, 0, y);
-    event.preventDefault();
     scheduleClearCache();
+    event.preventDefault();
+    // These sites handle scrolling with their own custom event handlers,
+    // we want to override completely.
+    if (document.URL.startsWith("https://mail.google.com")) {
+        event.stopPropagation();
+    }
 }
 
 /**
