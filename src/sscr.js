@@ -70,7 +70,7 @@ chrome.storage.sync.get(defaultOptions, function (syncedOptions) {
 
     // it seems that sometimes settings come late
     // and we need to test again for excluded pages
-    initTest();
+    initWithOptions();
 });
 
 
@@ -81,7 +81,7 @@ chrome.storage.sync.get(defaultOptions, function (syncedOptions) {
 /**
  * Tests if smooth scrolling is allowed. Shuts down everything if not.
  */
-function initTest() {
+function initWithOptions() {
     // disable everything if the page is blacklisted
     var domains = options.excluded.split(/[,\n] ?/);
     domains.push('play.google.com/music'); // problem with Polymer elements
