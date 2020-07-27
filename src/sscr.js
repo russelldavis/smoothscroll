@@ -49,8 +49,16 @@ var key = { left: 37, up: 38, right: 39, down: 40, spacebar: 32,
             pageup: 33, pagedown: 34, end: 35, home: 36 };
 var arrowKeys = { 37: 1, 38: 1, 39: 1, 40: 1 };
 
-let lastScrollableSearchRoot = null;
-
+let cachedBestScrollable = null;
+// Use the "best" scrollable area, even if there's a different scrollable area
+// that's an ancestor of the active element. Set this to true for sites like
+// gmail where you want to scroll the message pane regardless of the active
+// element.
+let forceBestScrollable = false;
+// Controls whether a key event that we translate into a scroll gets propagated.
+// Set this to false for sites like gmail that have their own JS event handlers
+// that would conflict with our scrolling behavior.
+let propagateScrollKeys = true;
 /***********************************************
  * SETTINGS
  ***********************************************/
@@ -86,6 +94,10 @@ function initTest() {
             cleanup();
             return;
         }
+    }
+    if (document.URL.startsWith("https://mail.google.com")) {
+        forceBestScrollable = true;
+        propagateScrollKeys = false;
     }
 }
 
@@ -280,9 +292,18 @@ function scrollArray(elem, left, top) {
     pending = window.requestAnimationFrame(step);
 }
 
-function findScrollable(root) {
+function getBestScrollable() {
+    // offsetParent will be null if the element is `display:none` or has been
+    // removed from the dom.
+    if (!cachedBestScrollable || !cachedBestScrollable.offsetParent) {
+        cachedBestScrollable = findBestScrollable(document.body);
+    }
+    return cachedBestScrollable;
+}
+
+function findBestScrollable(root) {
     let scrollers = [];
-    console.time("findScrollable");
+    console.time("findBestScrollable");
     let walker = document.createTreeWalker(
         root,
         NodeFilter.SHOW_ELEMENT,
@@ -307,7 +328,7 @@ function findScrollable(root) {
             widestEl = scroller;
         }
     }
-    console.timeEnd("findScrollable");
+    console.timeEnd("findBestScrollable");
     return widestEl;
 }
 
@@ -393,28 +414,32 @@ function keydown(event) {
       return;
     }
 
-    // console.log("target: ", targetElement);
-    var overflowing = overflowingAncestor(targetElement);
+    let overflowing;
+    if (forceBestScrollable) {
+        overflowing = getBestScrollable();
+    } else {
+        overflowing = overflowingAncestor(targetElement);
+        // NB: this code path is experimental. I haven't really used it yet
+        // since I'm now using forceBestScrollable for gmail.
+        if (!overflowing) {
+            // We couldn't find a scrollable ancestor.
+            // Look for the best scrollable in the whole document.
+            let bestScrollable = getBestScrollable();
+            if (bestScrollable) {
+                overflowing = bestScrollable;
+                targetElement = bestScrollable;
+            }
+        }
+    }
 
     if (!overflowing) {
-        // We couldn't find a scrollable ancestor. Look for a scrollable child.
-        if (lastScrollableSearchRoot !== targetElement) {
-            lastScrollableSearchRoot = targetElement;
-            overflowing = findScrollable(document.body);
-            if (overflowing) {
-                targetElement = overflowing;
-            }
+        // iframes seem to eat key events, which we need to propagate up
+        // if the iframe has nothing overflowing to scroll
+        if (isFrame) {
+            // @ts-ignore this is our own global keydown function
+            parent.keydown(event);
         }
-
-        if (!overflowing) {
-            // iframes seem to eat key events, which we need to propagate up
-            // if the iframe has nothing overflowing to scroll
-            if (isFrame) {
-                // @ts-ignore this is our own global keydown function
-                parent.keydown(event);
-            }
-            return;
-        }
+        return;
     }
 
     var clientHeight = overflowing.clientHeight;
@@ -457,9 +482,7 @@ function keydown(event) {
     scrollArray(overflowing, 0, y);
     scheduleClearCache();
     event.preventDefault();
-    // These sites handle scrolling with their own custom event handlers,
-    // we want to override completely.
-    if (document.URL.startsWith("https://mail.google.com")) {
+    if (!propagateScrollKeys) {
         event.stopPropagation();
     }
 }
