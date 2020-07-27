@@ -292,25 +292,33 @@ function scrollArray(elem, left, top) {
     pending = window.requestAnimationFrame(step);
 }
 
-function getBestScrollable() {
+// Adapted from https://stackoverflow.com/a/47647393/278488
+function isScrollable(el) {
     // offsetParent will be null if the element is `display:none` or has been
     // removed from the dom.
-    if (!cachedBestScrollable || !cachedBestScrollable.offsetParent) {
+    if (!el.offsetParent) {
+        return false;
+    }
+    return getComputedStyle(el)["overflow-y"] === "scroll";
+}
+
+function getBestScrollable() {
+    if (!cachedBestScrollable || !isScrollable(cachedBestScrollable)) {
         cachedBestScrollable = findBestScrollable(document.body);
     }
     return cachedBestScrollable;
 }
 
 function findBestScrollable(root) {
-    let scrollers = [];
+    let scrollables = [];
     console.time("findBestScrollable");
     let walker = document.createTreeWalker(
         root,
         NodeFilter.SHOW_ELEMENT,
         {
             acceptNode: function(/** @type {Element} */ node) {
-                if (getComputedStyle(node)["overflow-y"] === "scroll") {
-                    scrollers.push(node);
+                if (isScrollable(node)) {
+                    scrollables.push(node);
                     return NodeFilter.FILTER_REJECT;
                 }
                 return NodeFilter.FILTER_SKIP;
@@ -322,10 +330,10 @@ function findBestScrollable(root) {
 
     let maxWidth = 0;
     let widestEl = null;
-    for (let scroller of scrollers) {
-        if (scroller.clientWidth > maxWidth) {
-            maxWidth = scroller.clientWidth;
-            widestEl = scroller;
+    for (let scrollable of scrollables) {
+        if (scrollable.clientWidth > maxWidth) {
+            maxWidth = scrollable.clientWidth;
+            widestEl = scrollable;
         }
     }
     console.timeEnd("findBestScrollable");
