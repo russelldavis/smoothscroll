@@ -58,7 +58,9 @@ let forceBestScrollable = false;
 // Controls whether a key event that we translate into a scroll gets propagated.
 // Set this to false for sites like gmail that have their own JS event handlers
 // that would conflict with our scrolling behavior.
-let propagateScrollKeys = true;
+// UPDATE: I'm now trying out setting to false for everything. Can't think of a
+// case where it needs to be true
+let propagateScrollKeys = false;
 /***********************************************
  * SETTINGS
  ***********************************************/
@@ -99,6 +101,12 @@ function initWithOptions() {
         forceBestScrollable = true;
         propagateScrollKeys = false;
     }
+    if (document.URL.startsWith("https://www.mlb.com")) {
+        // Without this, scrolling is broken (just freezes) if you hold down
+        // an arrow key (even without this extension installed at all).
+        propagateScrollKeys = false;
+    }
+
 }
 
 /**
@@ -399,27 +407,30 @@ function keydown(event) {
     // or inside interactive elements
     var inputNodeNames = /^(textarea|select|embed|object)$/i;
     var buttonTypes = /^(button|submit|radio|checkbox|file|color|image)$/i;
-    if ( event.defaultPrevented ||
-         inputNodeNames.test(target.nodeName) ||
-         target instanceof HTMLInputElement && !buttonTypes.test(target.type) ||
-         isNodeName(targetElement, 'video') ||
-         isInsideYoutubeVideo(event) ||
-         target.isContentEditable ||
-         modifier ) {
-      return;
+    if (event.defaultPrevented ||
+        inputNodeNames.test(target.nodeName) ||
+        target instanceof HTMLInputElement && !buttonTypes.test(target.type) ||
+        isNodeName(targetElement, 'video') ||
+        isInsideYoutubeVideo(event) ||
+        target.isContentEditable ||
+        modifier
+    ) {
+        return;
     }
 
     // [spacebar] should trigger button press, leave it alone
     if ((isNodeName(target, 'button') ||
-         target instanceof HTMLInputElement && buttonTypes.test(target.type)) &&
-        event.keyCode === key.spacebar) {
-      return;
+        target instanceof HTMLInputElement && buttonTypes.test(target.type)) &&
+        event.keyCode === key.spacebar
+    ) {
+        return;
     }
 
     // [arrwow keys] on radio buttons should be left alone
     if (target instanceof HTMLInputElement && target.type === 'radio' &&
-        arrowKeys[event.keyCode])  {
-      return;
+        arrowKeys[event.keyCode]
+    ) {
+        return;
     }
 
     let overflowing;
