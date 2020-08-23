@@ -353,6 +353,45 @@ function findBestScrollable(root) {
     return widestEl;
 }
 
+function shouldIgnoreKeydown(event) {
+    var modifier = event.ctrlKey || event.altKey ||
+                  (event.metaKey && event.keyCode !== key.down && event.keyCode !== key.up) ||
+                  (event.shiftKey && event.keyCode !== key.spacebar);
+
+    // do nothing if user is editing text
+    // or using a modifier key (with some exceptions)
+    // or in a dropdown
+    // or inside interactive elements
+    var inputNodeNames = /^(textarea|select|embed|object)$/i;
+    var buttonTypes = /^(button|submit|radio|checkbox|file|color|image)$/i;
+    if (event.defaultPrevented ||
+        inputNodeNames.test(targetEl.nodeName) ||
+        targetEl instanceof HTMLInputElement && !buttonTypes.test(targetEl.type) ||
+        isNodeName(targetEl, 'video') ||
+        isInsideYoutubeVideo(targetEl) ||
+        targetEl.isContentEditable ||
+        modifier
+    ) {
+        return true;
+    }
+
+    // [spacebar] should trigger button press, leave it alone
+    if ((isNodeName(targetEl, 'button') ||
+        targetEl instanceof HTMLInputElement && buttonTypes.test(targetEl.type)) &&
+        event.keyCode === key.spacebar
+    ) {
+        return true;
+    }
+
+    // [arrwow keys] on radio buttons should be left alone
+    if (targetEl instanceof HTMLInputElement && targetEl.type === 'radio' &&
+        arrowKeys[event.keyCode]
+    ) {
+        return true;
+    }
+    return false;
+}
+
 /***********************************************
  * EVENTS
  ***********************************************/
@@ -369,10 +408,6 @@ function keydown(event) {
         return;
     }
     if (!isEnabled) return;
-
-    var modifier = event.ctrlKey || event.altKey ||
-                  (event.metaKey && event.keyCode !== key.down && event.keyCode !== key.up) ||
-                  (event.shiftKey && event.keyCode !== key.spacebar);
 
     // The notion-frame element existing means notion is done initializing.
     // (Before that, the notion-help-button element won't exist in either mode.)
@@ -416,35 +451,9 @@ function keydown(event) {
         // }
     }
 
-    // do nothing if user is editing text
-    // or using a modifier key (except shift)
-    // or in a dropdown
-    // or inside interactive elements
-    var inputNodeNames = /^(textarea|select|embed|object)$/i;
-    var buttonTypes = /^(button|submit|radio|checkbox|file|color|image)$/i;
-    if (event.defaultPrevented ||
-        inputNodeNames.test(targetEl.nodeName) ||
-        targetEl instanceof HTMLInputElement && !buttonTypes.test(targetEl.type) ||
-        isNodeName(targetEl, 'video') ||
-        isInsideYoutubeVideo(targetEl) ||
-        targetEl.isContentEditable ||
-        modifier
-    ) {
-        return;
-    }
-
-    // [spacebar] should trigger button press, leave it alone
-    if ((isNodeName(targetEl, 'button') ||
-        targetEl instanceof HTMLInputElement && buttonTypes.test(targetEl.type)) &&
-        event.keyCode === key.spacebar
-    ) {
-        return;
-    }
-
-    // [arrwow keys] on radio buttons should be left alone
-    if (targetEl instanceof HTMLInputElement && targetEl.type === 'radio' &&
-        arrowKeys[event.keyCode]
-    ) {
+    // alt + up/down means "scroll no matter what"
+    let forceScroll = event.altKey && event.keyCode === key.down || event.keyCode === key.up;
+    if (!forceScroll && shouldIgnoreKeydown(event)) {
         return;
     }
 
