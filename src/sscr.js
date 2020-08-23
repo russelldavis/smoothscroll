@@ -41,9 +41,9 @@ var isEnabled = true;
 var isExcluded = false;
 var isFrame = false;
 var direction = { x: 0, y: 0 };
-var initDone  = false;
 var root = document.documentElement;
-var targetElement;
+/** @type HTMLElement */
+var targetEl;
 
 var key = { left: 37, up: 38, right: 39, down: 40, spacebar: 32,
             pageup: 33, pagedown: 34, end: 35, home: 36 };
@@ -61,6 +61,7 @@ let forceBestScrollable = false;
 // UPDATE: I'm now trying out setting to false for everything. Can't think of a
 // case where it needs to be true
 let propagateScrollKeys = false;
+let isNotion = false;
 /***********************************************
  * SETTINGS
  ***********************************************/
@@ -106,14 +107,16 @@ function initWithOptions() {
         // an arrow key (even without this extension installed at all).
         propagateScrollKeys = false;
     }
-
+    if (document.URL.startsWith("https://www.notion.so")) {
+        isNotion = true;
+    }
 }
 
 /**
  * Sets up scrolls array, determines if frames are involved.
  */
 function init() {
-    if (initDone || isExcluded || !document.body) {
+    if (isExcluded || !document.body) {
         return;
     }
 
@@ -130,8 +133,6 @@ function init() {
         return;
     }
 
-    initDone = true;
-
     var body = document.body;
     var html = document.documentElement;
     var windowHeight = window.innerHeight;
@@ -141,7 +142,8 @@ function init() {
     // documentElement, depending on quirks mode.
     // See https://bugs.chromium.org/p/chromium/issues/detail?id=157855.
     root = (document.compatMode.indexOf('CSS') >= 0) ? html : body;
-    targetElement = body;
+    // @ts-ignore downcast
+    targetEl = document.activeElement;
 
     // Checks if this script is running in a frame
     if (top !== self) {
@@ -307,7 +309,10 @@ function isScrollable(el) {
     if (!el.offsetParent) {
         return false;
     }
-    return getComputedStyle(el)["overflow-y"] === "scroll";
+    // Example of a scrollable we want to find with overflow-y set to "auto":
+    // https://www.notion.so/Founding-Engineer-710e5b15e6bd41ac9ff7f38ff153f929
+    // Example for "scroll": gmail
+    return ["scroll", "auto"].includes(getComputedStyle(el)["overflow-y"]);
 }
 
 function getBestScrollable() {
@@ -365,40 +370,50 @@ function keydown(event) {
     }
     if (!isEnabled) return;
 
-    /** @type HTMLElement */
-    // @ts-ignore downcast
-    var target = event.target;
-    // See https://stackoverflow.com/questions/47737652/detect-if-dom-element-is-custom-web-component-or-html-element
-    if (target.tagName.includes("-") && event.composedPath) {
-        // The target is a webcomponent. Get the real (inner) target.
-        // See https://stackoverflow.com/questions/57963312/get-event-target-inside-a-web-component
-        // @ts-ignore downcast
-        target = event.composedPath()[0];
-    }
     var modifier = event.ctrlKey || event.altKey ||
                   (event.metaKey && event.keyCode !== key.down && event.keyCode !== key.up) ||
                   (event.shiftKey && event.keyCode !== key.spacebar);
 
+    // The notion-frame element existing means notion is done initializing.
+    // (Before that, the notion-help-button element won't exist in either mode.)
+    if (isNotion && document.querySelector(".notion-frame") != null) {
+        // The help button only exists in editing mode, which we don't want to alter.
+        if (
+          (targetEl.nodeName === 'TEXTAREA' || targetEl.isContentEditable) &&
+          document.querySelector(".notion-help-button") == null
+        ) {
+            console.log("Fixing scrolling for notion");
+            targetEl = document.body;
+        }
+    }
+
     // Our own tracked active element could've been removed from the DOM (e.g. on twitter clicking
     // "Show more replies") or made invisible (e.g. on twitter when closing an image popup by
     // clicking outside it in the Gallery-closetarget grey area). Checking null offsetParent
-    // catches either case. (Do nothing when targetElement is already document.body, since that
+    // catches either case. (Do nothing when targetEl is already document.body, since that
     // *never* has an offsetParent, and should never be getting removed or made invisible. We want
     // to keep the target as the body when a page (e.g. swift.org) has a scrollable body as well
     // as a scrollable child of body.
-    if (targetElement !== document.body && !targetElement.offsetParent) {
-        targetElement = document.activeElement;
-        if (targetElement === document.body) {
-            // Chrome resets it to the body when an element goes away,
-            // but often the thing that's being scrolled is a child.
-            // Let's try to find it.
-            for (let elem of document.body.children) {
-                if (overflowingElement(elem)) {
-                    targetElement = elem;
-                    break;
-                }
-            }
-        }
+    if (targetEl !== document.body && !targetEl.offsetParent) {
+        // @ts-ignore downcast
+        targetEl = document.activeElement;
+        // I think what this really wants to be doing is reusing `overflowing`
+        // from the previous event, if it still exists. The original use case,
+        // Twitter, no longer applies as they've changed their UI. Commenting it
+        // out for now to see what breaks and then revisit it. (As-is, it's very
+        // close to the existing getBestScrollble logic that already happens below.)
+        //
+        // if (targetEl === document.body) {
+        //     // Chrome resets it to the body when an element goes away,
+        //     // but often the thing that's being scrolled is a child.
+        //     // Let's try to find it.
+        //     for (let elem of document.body.children) {
+        //         if (overflowingElement(elem)) {
+        //             targetEl = elem;
+        //             break;
+        //         }
+        //     }
+        // }
     }
 
     // do nothing if user is editing text
@@ -408,26 +423,26 @@ function keydown(event) {
     var inputNodeNames = /^(textarea|select|embed|object)$/i;
     var buttonTypes = /^(button|submit|radio|checkbox|file|color|image)$/i;
     if (event.defaultPrevented ||
-        inputNodeNames.test(target.nodeName) ||
-        target instanceof HTMLInputElement && !buttonTypes.test(target.type) ||
-        isNodeName(targetElement, 'video') ||
-        isInsideYoutubeVideo(event) ||
-        target.isContentEditable ||
+        inputNodeNames.test(targetEl.nodeName) ||
+        targetEl instanceof HTMLInputElement && !buttonTypes.test(targetEl.type) ||
+        isNodeName(targetEl, 'video') ||
+        isInsideYoutubeVideo(targetEl) ||
+        targetEl.isContentEditable ||
         modifier
     ) {
         return;
     }
 
     // [spacebar] should trigger button press, leave it alone
-    if ((isNodeName(target, 'button') ||
-        target instanceof HTMLInputElement && buttonTypes.test(target.type)) &&
+    if ((isNodeName(targetEl, 'button') ||
+        targetEl instanceof HTMLInputElement && buttonTypes.test(targetEl.type)) &&
         event.keyCode === key.spacebar
     ) {
         return;
     }
 
     // [arrwow keys] on radio buttons should be left alone
-    if (target instanceof HTMLInputElement && target.type === 'radio' &&
+    if (targetEl instanceof HTMLInputElement && targetEl.type === 'radio' &&
         arrowKeys[event.keyCode]
     ) {
         return;
@@ -437,26 +452,39 @@ function keydown(event) {
     if (forceBestScrollable) {
         overflowing = getBestScrollable();
     } else {
-        overflowing = overflowingAncestor(targetElement);
-        // NB: this code path is experimental. I haven't really used it yet
-        // since I'm now using forceBestScrollable for gmail.
-        if (!overflowing) {
-            // We couldn't find a scrollable ancestor.
-            // Look for the best scrollable in the whole document.
+        overflowing = overflowingAncestor(targetEl);
+        // We don't do this if we're a frame, otherwise we may find a suboptimal
+        // scrollable and prevent the main scrollable in the parent from scrolling
+        // (reproduce by clicking in the comments section at the bottom of
+        // https://online-training.jbrains.ca/courses/the-jbrains-experience/lectures/5600334).
+        if (!overflowing && !isFrame) {
+            // We couldn't find a scrollable ancestor. Look for the best
+            // scrollable in the whole document.
+            //
+            // Example where this is used: notion docs, e.g.:
+            // https://www.notion.so/Founding-Engineer-710e5b15e6bd41ac9ff7f38ff153f929
+            // They have a fixed header and non-scrolling body. Instead,
+            // there's a scrollable div buried in the dom that this finds.
+            // (They normally handle scrolling themselves but we override it;
+            // see `isNotion`.)
             let bestScrollable = getBestScrollable();
+            console.log("No scrollable ancestor for:", targetEl)
             if (bestScrollable) {
+                console.log("Using best scrollable instead:", bestScrollable)
                 overflowing = bestScrollable;
-                targetElement = bestScrollable;
+                targetEl = bestScrollable;
             }
         }
     }
 
     if (!overflowing) {
-        // iframes seem to eat key events, which we need to propagate up
-        // if the iframe has nothing overflowing to scroll
+        // If we're in a frame, the paren't won't get the keyboard event.
+        // it *would* automatically scroll if we do nothing and return here,
+        // but it wouldn't be our smooth scrolling. (When pressing the spacebar
+        // inside an iframe, chrome has a bug where it won't scroll at all,
+        // so our logic here also fixes that.)
         if (isFrame) {
-            // @ts-ignore this is our own global keydown function
-            parent.keydown(event);
+            // TODO: send a message to the outer frame to do smooth scrolling.
         }
         return;
     }
@@ -506,16 +534,35 @@ function keydown(event) {
     }
 }
 
-/**
- * Mousedown event only for updating targetElement.
- * This is necessary because, depending on the properties of the element being
- * clicked on, the browser might not update document.activeElement, even when
- * clicking on an element with scrollbars.
- */
+// Some sites have scrollable areas that are not focusable.[1] If you click them
+// and press the arrow keys, they will scroll. Which element will scroll when
+// you press the arrow keys is not exposed via any API. So we attempt to replicate
+// what the browser is doing internally, tracking that element via targetEl.
+//
+// We set it here on mousedown to catch the non-focusable elements. We have a separate
+// onFocus handler that will overwrite it when something gets focused.
+// [1] Example: https://online-training.jbrains.ca/courses/the-jbrains-experience/lectures/5600334
+// Discussion: https://stackoverflow.com/questions/497094/how-do-i-find-out-which-dom-element-has-the-focus
+// Playground: http://jsfiddle.net/mklement/72rTF/
 function mousedown(event) {
-    targetElement = event.target;
+    targetEl = getInnerTarget(event);
 }
 
+function onFocus(event) {
+    targetEl = getInnerTarget(event);
+}
+
+function getInnerTarget(event) {
+    // See https://stackoverflow.com/questions/47737652/detect-if-dom-element-is-custom-web-component-or-html-element
+    if (event.target.tagName?.includes("-") && event.composedPath) {
+        // The target is a webcomponent. Get the real (inner) target.
+        // See https://stackoverflow.com/questions/57963312/get-event-target-inside-a-web-component
+        // @ts-ignore downcast
+        return event.composedPath()[0];
+    } else {
+        return event.target;
+    }
+}
 
 /***********************************************
  * OVERFLOW
@@ -588,27 +635,27 @@ function overflowingAncestor(el) {
 }
 
 // HACK: copied from overflowAncestor, just removed the loop
-function overflowingElement(el) {
-    var elems = [];
-    var body = document.body;
-    var rootScrollHeight = root.scrollHeight;
-    var cached = getCache(el);
-    if (cached) {
-        return setCache(elems, cached);
-    }
-    elems.push(el);
-    if (rootScrollHeight === el.scrollHeight) {
-        var topOverflowsNotHidden = overflowNotHidden(root) && overflowNotHidden(body);
-        var isOverflowCSS = topOverflowsNotHidden || overflowAutoOrScroll(root);
-        if (isFrame && isContentOverflowing(root) ||
-           !isFrame && isOverflowCSS) {
-            return setCache(elems, root);
-        }
-    } else if (isContentOverflowing(el) && overflowAutoOrScroll(el)) {
-        return setCache(elems, el);
-    }
-    return false;
-}
+// function overflowingElement(el) {
+//     var elems = [];
+//     var body = document.body;
+//     var rootScrollHeight = root.scrollHeight;
+//     var cached = getCache(el);
+//     if (cached) {
+//         return setCache(elems, cached);
+//     }
+//     elems.push(el);
+//     if (rootScrollHeight === el.scrollHeight) {
+//         var topOverflowsNotHidden = overflowNotHidden(root) && overflowNotHidden(body);
+//         var isOverflowCSS = topOverflowsNotHidden || overflowAutoOrScroll(root);
+//         if (isFrame && isContentOverflowing(root) ||
+//            !isFrame && isOverflowCSS) {
+//             return setCache(elems, root);
+//         }
+//     } else if (isContentOverflowing(el) && overflowAutoOrScroll(el)) {
+//         return setCache(elems, el);
+//     }
+//     return false;
+// }
 
 function isContentOverflowing(el) {
     return el.clientHeight + 10 < el.scrollHeight;
@@ -666,8 +713,7 @@ function directionCheck(x, y) {
     }
 }
 
-function isInsideYoutubeVideo(event) {
-    var elem = event.target;
+function isInsideYoutubeVideo(elem) {
     var isControl = false;
     if (document.URL.indexOf ('www.youtube.com/watch') !== -1) {
         do {
@@ -717,3 +763,4 @@ function pulse(x) {
 }
 
 addEvent('load', loaded);
+addEvent('focus', onFocus);
