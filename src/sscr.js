@@ -86,10 +86,10 @@ chrome.storage.sync.get(defaultOptions, function (syncedOptions) {
  */
 function initWithOptions() {
     // disable everything if the page is blacklisted
-    var domains = options.excluded.split(/[,\n] ?/);
+    let domains = options.excluded.split(/[,\n] ?/);
     domains.push('play.google.com/music'); // problem with Polymer elements
     domains.push('strava.com'); // slow scrolling for some reason
-    for (var i = domains.length; i--;) {
+    for (let i = domains.length; i--;) {
         // domains[i] can be empty if options.excluded is empty, or if there are blank lines
         if (domains[i] && (document.URL.indexOf(domains[i]) > -1)) {
             console.log("SmoothScroll is disabled for " + domains[i]);
@@ -133,10 +133,10 @@ function init() {
         return;
     }
 
-    var body = document.body;
-    var html = document.documentElement;
-    var windowHeight = window.innerHeight;
-    var scrollHeight = body.scrollHeight;
+    let body = document.body;
+    let html = document.documentElement;
+    let windowHeight = window.innerHeight;
+    let scrollHeight = body.scrollHeight;
 
     // Some properties like scrollTop are only set on either body or
     // documentElement, depending on quirks mode.
@@ -155,7 +155,7 @@ function init() {
             (body.clientHeight + 1 < body.scrollHeight &&
              html.clientHeight + 1 < html.scrollHeight)) {
         if (root.offsetHeight <= windowHeight) {
-            var clearfix = document.createElement('div');
+            let clearfix = document.createElement('div');
             clearfix.style.clear = 'both';
             body.appendChild(clearfix);
         }
@@ -354,7 +354,7 @@ function findBestScrollable(root) {
 }
 
 function shouldIgnoreKeydown(event) {
-    var modifier = event.ctrlKey || event.altKey ||
+    let modifier = event.ctrlKey || event.altKey ||
                   (event.metaKey && event.keyCode !== key.down && event.keyCode !== key.up) ||
                   (event.shiftKey && event.keyCode !== key.spacebar);
 
@@ -362,8 +362,8 @@ function shouldIgnoreKeydown(event) {
     // or using a modifier key (with some exceptions)
     // or in a dropdown
     // or inside interactive elements
-    var inputNodeNames = /^(textarea|select|embed|object)$/i;
-    var buttonTypes = /^(button|submit|radio|checkbox|file|color|image)$/i;
+    let inputNodeNames = /^(textarea|select|embed|object)$/i;
+    let buttonTypes = /^(button|submit|radio|checkbox|file|color|image)$/i;
     if (event.defaultPrevented ||
         inputNodeNames.test(targetEl.nodeName) ||
         targetEl instanceof HTMLInputElement && !buttonTypes.test(targetEl.type) ||
@@ -498,8 +498,8 @@ function keydown(event) {
         return;
     }
 
-    var clientHeight = overflowing.clientHeight;
-    var shift, y = 0;
+    let clientHeight = overflowing.clientHeight;
+    let shift, y = 0;
 
     switch (event.keyCode) {
         case key.up:
@@ -518,8 +518,8 @@ function keydown(event) {
             }
             // Fall through to treat cmd+down as end
         case key.end:
-            var scroll = overflowing.scrollHeight - overflowing.scrollTop;
-            var scrollRemaining = scroll - clientHeight;
+            let scroll = overflowing.scrollHeight - overflowing.scrollTop;
+            let scrollRemaining = scroll - clientHeight;
             y = (scrollRemaining > 0) ? scrollRemaining+10 : 0;
             break;
         case key.spacebar: // (+ shift)
@@ -597,7 +597,7 @@ function scheduleClearCache() {
 }
 
 function setCache(elems, overflowing) {
-    for (var i = elems.length; i--;)
+    for (let i = elems.length; i--;)
         cacheY[uniqueID(elems[i])] = overflowing;
     return overflowing;
 }
@@ -614,18 +614,18 @@ function getCache(el) {
 // auto    |   no   |   YES   |   YES  |   YES  |
 
 function overflowingAncestor(el) {
-    var elems = [];
-    var body = document.body;
-    var rootScrollHeight = root.scrollHeight;
+    let elems = [];
+    let body = document.body;
+    let rootScrollHeight = root.scrollHeight;
     do {
-        var cached = getCache(el);
+        let cached = getCache(el);
         if (cached) {
             return setCache(elems, cached);
         }
         elems.push(el);
         if (rootScrollHeight === el.scrollHeight) {
-            var topOverflowsNotHidden = overflowNotHidden(root) && overflowNotHidden(body);
-            var isOverflowCSS = topOverflowsNotHidden || overflowAutoOrScroll(root);
+            let topOverflowsNotHidden = overflowNotHidden(root) && overflowNotHidden(body);
+            let isOverflowCSS = topOverflowsNotHidden || overflowAutoOrScroll(root);
             if (isFrame && isContentOverflowing(root) ||
                !isFrame && isOverflowCSS) {
                 return setCache(elems, root);
@@ -645,17 +645,17 @@ function overflowingAncestor(el) {
 
 // HACK: copied from overflowAncestor, just removed the loop
 // function overflowingElement(el) {
-//     var elems = [];
-//     var body = document.body;
-//     var rootScrollHeight = root.scrollHeight;
-//     var cached = getCache(el);
+//     let elems = [];
+//     let body = document.body;
+//     let rootScrollHeight = root.scrollHeight;
+//     let cached = getCache(el);
 //     if (cached) {
 //         return setCache(elems, cached);
 //     }
 //     elems.push(el);
 //     if (rootScrollHeight === el.scrollHeight) {
-//         var topOverflowsNotHidden = overflowNotHidden(root) && overflowNotHidden(body);
-//         var isOverflowCSS = topOverflowsNotHidden || overflowAutoOrScroll(root);
+//         let topOverflowsNotHidden = overflowNotHidden(root) && overflowNotHidden(body);
+//         let isOverflowCSS = topOverflowsNotHidden || overflowAutoOrScroll(root);
 //         if (isFrame && isContentOverflowing(root) ||
 //            !isFrame && isOverflowCSS) {
 //             return setCache(elems, root);
@@ -685,9 +685,9 @@ function overflowAutoOrScroll(el) {
 }
 
 function isScrollBehaviorSmooth(el) {
-    var id = uniqueID(el);
+    let id = uniqueID(el);
     if (smoothBehaviorForElement[id] == null) {
-        var scrollBehavior = getComputedStyle(el, '')['scroll-behavior'];
+        let scrollBehavior = getComputedStyle(el, '')['scroll-behavior'];
         smoothBehaviorForElement[id] = ('smooth' === scrollBehavior);
     }
     return smoothBehaviorForElement[id];
@@ -723,7 +723,7 @@ function directionCheck(x, y) {
 }
 
 function isInsideYoutubeVideo(elem) {
-    var isControl = false;
+    let isControl = false;
     if (document.URL.indexOf ('www.youtube.com/watch') !== -1) {
         do {
             isControl = (elem.classList &&
@@ -745,7 +745,7 @@ function isInsideYoutubeVideo(elem) {
  * - Michael Herf, http://stereopsis.com/stopping/
  */
 function pulse_(x) {
-    var val, start, expx;
+    let val, start, expx;
     // test
     x = x * options.pulseScale;
     if (x < 1) { // acceleartion
