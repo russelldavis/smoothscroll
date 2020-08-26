@@ -547,7 +547,7 @@ function keydown(event) {
     scheduleClearCache();
     event.preventDefault();
     if (!propagateScrollKeys) {
-        event.stopPropagation();
+        event.stopImmediatePropagation();
     }
 }
 
@@ -706,6 +706,7 @@ function isScrollBehaviorSmooth(el) {
  ***********************************************/
 
 function addEvent(type, fn) {
+    // We listen on `window` rather than `document` so we get events first.
     window.addEventListener(type, fn, true);
 }
 
