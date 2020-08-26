@@ -1,4 +1,3 @@
-
 //
 // SmoothScroll (Balazs Galambosi)
 // Licensed under the terms of the MIT license.
@@ -45,9 +44,14 @@ var root = document.documentElement;
 /** @type HTMLElement */
 var targetEl;
 
-var key = { left: 37, up: 38, right: 39, down: 40, spacebar: 32,
-            pageup: 33, pagedown: 34, end: 35, home: 36 };
-var arrowKeys = { 37: 1, 38: 1, 39: 1, 40: 1 };
+const keyToCode = {
+    left: 37, up: 38, right: 39, down: 40, spacebar: 32,
+    pageup: 33, pagedown: 34, end: 35, home: 36
+};
+const scrollKeyCodes = new Set(Object.values(keyToCode));
+const arrowKeyCodes = new Set([
+  keyToCode.left, keyToCode.up, keyToCode.right, keyToCode.down
+]);
 
 let cachedBestScrollable = null;
 // Use the "best" scrollable area, even if there's a different scrollable area
@@ -183,7 +187,7 @@ function cleanup() {
  * Make sure we are the last listener on the page so special
  * key event handlers (e.g for <video>) can come before us
  */
-function loaded() {
+function onLoad() {
     setTimeout(init, 1);
 }
 
@@ -354,9 +358,13 @@ function findBestScrollable(root) {
 }
 
 function shouldIgnoreKeydown(event) {
+    if (!scrollKeyCodes.has(event.keyCode)) {
+        return true;
+    }
+
     let modifier = event.ctrlKey || event.altKey ||
-                  (event.metaKey && event.keyCode !== key.down && event.keyCode !== key.up) ||
-                  (event.shiftKey && event.keyCode !== key.spacebar);
+                  (event.metaKey && event.keyCode !== keyToCode.down && event.keyCode !== keyToCode.up) ||
+                  (event.shiftKey && event.keyCode !== keyToCode.spacebar);
 
     // do nothing if user is editing text
     // or using a modifier key (with some exceptions)
@@ -378,14 +386,14 @@ function shouldIgnoreKeydown(event) {
     // [spacebar] should trigger button press, leave it alone
     if ((isNodeName(targetEl, 'button') ||
         targetEl instanceof HTMLInputElement && buttonTypes.test(targetEl.type)) &&
-        event.keyCode === key.spacebar
+        event.keyCode === keyToCode.spacebar
     ) {
         return true;
     }
 
     // [arrwow keys] on radio buttons should be left alone
     if (targetEl instanceof HTMLInputElement && targetEl.type === 'radio' &&
-        arrowKeys[event.keyCode]
+        arrowKeyCodes.has(event.keyCode)
     ) {
         return true;
     }
@@ -408,6 +416,12 @@ function keydown(event) {
         return;
     }
     if (!isEnabled) return;
+
+    // alt + up/down means "scroll no matter what"
+    let forceScroll = event.altKey && (event.keyCode === keyToCode.down || event.keyCode === keyToCode.up);
+    if (!forceScroll && shouldIgnoreKeydown(event)) {
+        return;
+    }
 
     // The notion-frame element existing means notion is done initializing.
     // (Before that, the notion-help-button element won't exist in either mode.)
@@ -449,12 +463,6 @@ function keydown(event) {
         //         }
         //     }
         // }
-    }
-
-    // alt + up/down means "scroll no matter what"
-    let forceScroll = event.altKey && event.keyCode === key.down || event.keyCode === key.up;
-    if (!forceScroll && shouldIgnoreKeydown(event)) {
-        return;
     }
 
     let overflowing;
@@ -502,34 +510,34 @@ function keydown(event) {
     let shift, y = 0;
 
     switch (event.keyCode) {
-        case key.up:
+        case keyToCode.up:
             if (!event.metaKey) {
                 y = -options.arrowScroll;
                 break;
             }
             // Fall through to treat cmd+up as home
-        case key.home:
+        case keyToCode.home:
             y = -overflowing.scrollTop;
             break;
-        case key.down:
+        case keyToCode.down:
             if (!event.metaKey) {
                 y = options.arrowScroll;
                 break;
             }
             // Fall through to treat cmd+down as end
-        case key.end:
+        case keyToCode.end:
             let scroll = overflowing.scrollHeight - overflowing.scrollTop;
             let scrollRemaining = scroll - clientHeight;
             y = (scrollRemaining > 0) ? scrollRemaining+10 : 0;
             break;
-        case key.spacebar: // (+ shift)
+        case keyToCode.spacebar: // (+ shift)
             shift = event.shiftKey ? 1 : -1;
             y = -shift * clientHeight * 0.9;
             break;
-        case key.pageup:
+        case keyToCode.pageup:
             y = -clientHeight * 0.9;
             break;
-        case key.pagedown:
+        case keyToCode.pagedown:
             y = clientHeight * 0.9;
             break;
         default:
@@ -771,5 +779,5 @@ function pulse(x) {
     return pulse_(x);
 }
 
-addEvent('load', loaded);
+addEvent('load', onLoad);
 addEvent('focus', onFocus);
