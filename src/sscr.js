@@ -65,6 +65,8 @@ let forceBestScrollable = false;
 // case where it needs to be true
 let propagateScrollKeys = false;
 let isNotion = false;
+let listeners = [];
+
 /***********************************************
  * SETTINGS
  ***********************************************/
@@ -118,7 +120,7 @@ function initWithOptions() {
 /**
  * Sets up scrolls array, determines if frames are involved.
  */
-function init() {
+function onLoad() {
     if (isExcluded || !document.body) {
         return;
     }
@@ -169,27 +171,7 @@ function init() {
         body.style.backgroundAttachment = 'scroll';
         html.style.backgroundAttachment = 'scroll';
     }
-
-    addEvent('mousedown', mousedown);
-    addEvent('keydown', keydown);
 }
-
-/**
- * Removes event listeners and other traces left on the page.
- */
-function cleanup() {
-    removeEvent('mousedown', mousedown);
-    removeEvent('keydown', keydown);
-}
-
-/**
- * Make sure we are the last listener on the page so special
- * key event handlers (e.g for <video>) can come before us
- */
-function onLoad() {
-    setTimeout(init, 1);
-}
-
 
 /************************************************
  * SCROLLING
@@ -419,7 +401,7 @@ class IEventActions {
 /**
  * @param {KeyboardEvent} event
  */
-function keydown(event) {
+function onKeyDown(event) {
     handleKeyData(new KeyData(event), event);
 }
 
@@ -584,7 +566,7 @@ function handleKeyData(keyData, actions) {
 // [1] Example: https://online-training.jbrains.ca/courses/the-jbrains-experience/lectures/5600334
 // Discussion: https://stackoverflow.com/questions/497094/how-do-i-find-out-which-dom-element-has-the-focus
 // Playground: http://jsfiddle.net/mklement/72rTF/
-function mousedown(event) {
+function onMouseDown(event) {
     targetEl = getInnerTarget(event);
 }
 
@@ -765,15 +747,6 @@ function isScrollBehaviorSmooth(el) {
  * HELPERS
  ***********************************************/
 
-function addEvent(type, fn) {
-    // We listen on `window` rather than `document` so we get events first.
-    window.addEventListener(type, fn, true);
-}
-
-function removeEvent(type, fn) {
-    window.removeEventListener(type, fn, true);
-}
-
 function isNodeName(el, tag) {
     return el && (el.nodeName||'').toLowerCase() === tag.toLowerCase();
 }
@@ -839,6 +812,21 @@ function pulse(x) {
     return pulse_(x);
 }
 
-addEvent('load', onLoad);
-addEvent('focus', onFocus);
-addEvent("message", onMessage);
+function cleanup() {
+    while(listeners.length > 0) {
+        window.removeEventListener.apply(window, listeners.pop());
+    }
+}
+
+function addListener(type, fn) {
+    // We listen on `window` rather than `document` so we get events first.
+    window.addEventListener(type, fn, true);
+    listeners.push([type, fn, true]);
+}
+
+
+addListener('load', onLoad);
+addListener('focus', onFocus);
+addListener("message", onMessage);
+addListener('mousedown', onMouseDown);
+addListener('keydown', onKeyDown);
