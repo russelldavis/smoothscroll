@@ -6,6 +6,8 @@
 // without getting a written permission first.
 //
 
+const POST_MESSAGE_ID = "01f116cd-717b-42fc-ab68-932cd0ce961d"
+
 // Scroll Variables (tweakable)
 var defaultOptions = {
 
@@ -354,14 +356,14 @@ function findBestScrollable(root) {
     return widestEl;
 }
 
-function shouldIgnoreKeydown(event) {
-    if (!scrollKeyCodes.has(event.keyCode)) {
+function shouldIgnoreKeydown(keyData) {
+    if (!scrollKeyCodes.has(keyData.keyCode)) {
         return true;
     }
 
-    let modifier = event.ctrlKey || event.altKey ||
-                  (event.metaKey && event.keyCode !== keyToCode.down && event.keyCode !== keyToCode.up) ||
-                  (event.shiftKey && event.keyCode !== keyToCode.spacebar);
+    let modifier = keyData.ctrlKey || keyData.altKey ||
+                  (keyData.metaKey && keyData.keyCode !== keyToCode.down && keyData.keyCode !== keyToCode.up) ||
+                  (keyData.shiftKey && keyData.keyCode !== keyToCode.spacebar);
 
     // do nothing if user is editing text
     // or using a modifier key (with some exceptions)
@@ -369,8 +371,7 @@ function shouldIgnoreKeydown(event) {
     // or inside interactive elements
     let inputNodeNames = /^(textarea|select|embed|object)$/i;
     let buttonTypes = /^(button|submit|radio|checkbox|file|color|image)$/i;
-    if (event.defaultPrevented ||
-        inputNodeNames.test(targetEl.nodeName) ||
+    if (inputNodeNames.test(targetEl.nodeName) ||
         targetEl instanceof HTMLInputElement && !buttonTypes.test(targetEl.type) ||
         targetEl.isContentEditable ||
         modifier
@@ -381,40 +382,63 @@ function shouldIgnoreKeydown(event) {
     // [spacebar] should trigger button press, leave it alone
     if ((isNodeName(targetEl, 'button') ||
         targetEl instanceof HTMLInputElement && buttonTypes.test(targetEl.type)) &&
-        event.keyCode === keyToCode.spacebar
+        keyData.keyCode === keyToCode.spacebar
     ) {
         return true;
     }
 
     // [arrwow keys] on radio buttons should be left alone
     if (targetEl instanceof HTMLInputElement && targetEl.type === 'radio' &&
-        arrowKeyCodes.has(event.keyCode)
+        arrowKeyCodes.has(keyData.keyCode)
     ) {
         return true;
     }
     return false;
 }
 
+class KeyData {
+    constructor({code, keyCode, altKey, shiftKey, metaKey, ctrlKey}) {
+        this.code = code;
+        this.keyCode = keyCode;
+        this.altKey = altKey;
+        this.shiftKey = shiftKey;
+        this.metaKey = metaKey;
+        this.ctrlKey = ctrlKey;
+    }
+}
+
 /***********************************************
  * EVENTS
  ***********************************************/
 
+class IEventActions {
+    preventDefault() {}
+    stopImmediatePropagation() {}
+}
+
 /**
- * Keydown event handler.
  * @param {KeyboardEvent} event
  */
 function keydown(event) {
-    if (event.altKey && event.shiftKey && event.code === "Backslash") {
+    handleKeyData(new KeyData(event), event);
+}
+
+/**
+ * @param {KeyData} keyData
+ * @param {IEventActions} actions
+ */
+function handleKeyData(keyData, actions) {
+    if (keyData.altKey && keyData.shiftKey && keyData.code === "Backslash") {
         isEnabled = !isEnabled;
         console.log("SmoothScroll enabled: " + isEnabled);
-        event.preventDefault();
+        actions.preventDefault();
         return;
     }
     if (!isEnabled) return;
 
     // alt + up/down means "scroll no matter what"
-    let forceScroll = event.altKey && (event.keyCode === keyToCode.down || event.keyCode === keyToCode.up);
-    if (!forceScroll && shouldIgnoreKeydown(event)) {
+    let forceScroll = keyData.altKey && (keyData.keyCode === keyToCode.down || keyData.keyCode === keyToCode.up);
+    if (!forceScroll && shouldIgnoreKeydown(keyData)) {
         return;
     }
 
@@ -441,6 +465,8 @@ function keydown(event) {
     if (targetEl !== document.body && !targetEl.offsetParent) {
         // @ts-ignore downcast
         targetEl = document.activeElement;
+        console.log("scrolling element is no longer valid, resetting to activeElement");
+
         // I think what this really wants to be doing is reusing `overflowing`
         // from the previous event, if it still exists. The original use case,
         // Twitter, no longer applies as they've changed their UI. Commenting it
@@ -490,13 +516,15 @@ function keydown(event) {
     }
 
     if (!overflowing) {
-        // If we're in a frame, the paren't won't get the keyboard event.
-        // it *would* automatically scroll if we do nothing and return here,
+        // If we're in a frame, the parent won't get the keyboard event.
+        // It *would* automatically scroll if we do nothing and return here,
         // but it wouldn't be our smooth scrolling. (When pressing the spacebar
-        // inside an iframe, chrome has a bug where it won't scroll at all,
-        // so our logic here also fixes that.)
+        // inside certain iframes (e.g. on Amazon), chrome has a bug where it
+        // won't scroll at all, so our logic here also fixes that.)
         if (isFrame) {
-            // TODO: send a message to the outer frame to do smooth scrolling.
+            parent.postMessage({id: POST_MESSAGE_ID, keyData: keyData}, "*")
+            actions.stopImmediatePropagation();
+            actions.preventDefault();
         }
         return;
     }
@@ -504,9 +532,9 @@ function keydown(event) {
     let clientHeight = overflowing.clientHeight;
     let shift, y = 0;
 
-    switch (event.keyCode) {
+    switch (keyData.keyCode) {
         case keyToCode.up:
-            if (!event.metaKey) {
+            if (!keyData.metaKey) {
                 y = -options.arrowScroll;
                 break;
             }
@@ -515,7 +543,7 @@ function keydown(event) {
             y = -overflowing.scrollTop;
             break;
         case keyToCode.down:
-            if (!event.metaKey) {
+            if (!keyData.metaKey) {
                 y = options.arrowScroll;
                 break;
             }
@@ -526,7 +554,7 @@ function keydown(event) {
             y = (scrollRemaining > 0) ? scrollRemaining+10 : 0;
             break;
         case keyToCode.spacebar: // (+ shift)
-            shift = event.shiftKey ? 1 : -1;
+            shift = keyData.shiftKey ? 1 : -1;
             y = -shift * clientHeight * 0.9;
             break;
         case keyToCode.pageup:
@@ -540,9 +568,9 @@ function keydown(event) {
     }
     scrollArray(overflowing, 0, y);
     scheduleClearCache();
-    event.preventDefault();
+    actions.preventDefault();
     if (!propagateScrollKeys) {
-        event.stopImmediatePropagation();
+        actions.stopImmediatePropagation();
     }
 }
 
@@ -561,6 +589,11 @@ function mousedown(event) {
 }
 
 function onFocus(event) {
+    // We only want events inside the document. Could also fix this by listening on
+    // document instead of window, but for now keeping that consistent for all events.
+    if (event.target instanceof Window) {
+        return;
+    }
     targetEl = getInnerTarget(event);
 }
 
@@ -574,6 +607,38 @@ function getInnerTarget(event) {
     } else {
         return event.target;
     }
+}
+
+function getIframeForEvent(event) {
+    let iframes = document.getElementsByTagName('iframe');
+    for(let iframe of iframes) {
+        if(event.source === iframe.contentWindow) {
+            return iframe;
+        }
+    }
+    return null;
+}
+
+function onMessage(event) {
+    let data = event.data;
+    if (data.id !== POST_MESSAGE_ID) {
+        return;
+    }
+    event.stopImmediatePropagation();
+    // Don't think there's a default action, but we don't want it if there ever is
+    event.preventDefault();
+
+    let iframe = getIframeForEvent(event);
+    if (iframe) {
+        // NB: This won't result in the contents of the iframe getting scrolled, but
+        // rather ensures that we scroll the overflowing ancestor of the iframe (in case
+        // there are multiple scrollables).
+        targetEl = iframe;
+    } else {
+        console.warn("Couldn't find iframe for smoothscroll message");
+    }
+    // Pass in a dummy event for IEventActions, which will be no-ops
+    handleKeyData(data.keyData, new Event("dummy"))
 }
 
 /***********************************************
@@ -776,3 +841,4 @@ function pulse(x) {
 
 addEvent('load', onLoad);
 addEvent('focus', onFocus);
+addEvent("message", onMessage);
