@@ -45,13 +45,10 @@ var root = document.documentElement;
 var targetEl;
 
 const keyToCode = {
-    left: 37, up: 38, right: 39, down: 40, spacebar: 32,
-    pageup: 33, pagedown: 34, end: 35, home: 36
+    up: 38, down: 40, spacebar: 32, pageup: 33, pagedown: 34, end: 35, home: 36
 };
 const scrollKeyCodes = new Set(Object.values(keyToCode));
-const arrowKeyCodes = new Set([
-  keyToCode.left, keyToCode.up, keyToCode.right, keyToCode.down
-]);
+const arrowKeyCodes = new Set([keyToCode.up, keyToCode.down]);
 
 let cachedBestScrollable = null;
 // Use the "best" scrollable area, even if there's a different scrollable area
@@ -375,8 +372,6 @@ function shouldIgnoreKeydown(event) {
     if (event.defaultPrevented ||
         inputNodeNames.test(targetEl.nodeName) ||
         targetEl instanceof HTMLInputElement && !buttonTypes.test(targetEl.type) ||
-        isNodeName(targetEl, 'video') ||
-        isInsideYoutubeVideo(targetEl) ||
         targetEl.isContentEditable ||
         modifier
     ) {
@@ -731,17 +726,16 @@ function directionCheck(x, y) {
     }
 }
 
-function isInsideYoutubeVideo(elem) {
-    let isControl = false;
-    if (document.URL.indexOf ('www.youtube.com/watch') !== -1) {
-        do {
-            isControl = (elem.classList &&
-                         elem.classList.contains('html5-video-controls'));
-            if (isControl) break;
-        } while ((elem = elem.parentNode));
-    }
-    return isControl;
-}
+// function isInsideYoutubeVideo(elem) {
+//     if (document.URL.indexOf ('www.youtube.com/watch') !== -1) {
+//         do {
+//             if (elem.classList?.contains('html5-video-player')) {
+//                 return true;
+//             }
+//         } while ((elem = elem.parentNode));
+//     }
+//     return false;
+// }
 
 /***********************************************
  * PULSE (by Michael Herf)
