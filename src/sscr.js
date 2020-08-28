@@ -6,7 +6,7 @@
 // without getting a written permission first.
 //
 
-const POST_MESSAGE_ID = "01f116cd-717b-42fc-ab68-932cd0ce961d"
+const SCROLL_MSG_ID = "01f116cd-717b-42fc-ab68-932cd0ce961d"
 
 // Scroll Variables (tweakable)
 var defaultOptions = {
@@ -504,7 +504,7 @@ function handleKeyData(keyData, actions) {
         // inside certain iframes (e.g. on Amazon), chrome has a bug where it
         // won't scroll at all, so our logic here also fixes that.)
         if (isFrame) {
-            parent.postMessage({id: POST_MESSAGE_ID, keyData: keyData}, "*")
+            parent.postMessage({id: SCROLL_MSG_ID, keyData: keyData}, "*")
             actions.stopImmediatePropagation();
             actions.preventDefault();
         }
@@ -603,9 +603,10 @@ function getIframeForEvent(event) {
 
 function onMessage(event) {
     let data = event.data;
-    if (data.id !== POST_MESSAGE_ID) {
+    if (data.id !== SCROLL_MSG_ID) {
         return;
     }
+
     event.stopImmediatePropagation();
     // Don't think there's a default action, but we don't want it if there ever is
     event.preventDefault();
@@ -812,6 +813,8 @@ function pulse(x) {
     return pulse_(x);
 }
 
+/************* Listeners *************/
+
 function cleanup() {
     while(listeners.length > 0) {
         window.removeEventListener.apply(window, listeners.pop());
@@ -824,9 +827,32 @@ function addListener(type, fn) {
     listeners.push([type, fn, true]);
 }
 
+function addListeners() {
+    addListener('load', onLoad);
+    addListener('focus', onFocus);
+    addListener("message", onMessage);
+    addListener('mousedown', onMouseDown);
+    addListener('keydown', onKeyDown);
+}
 
-addListener('load', onLoad);
-addListener('focus', onFocus);
-addListener("message", onMessage);
-addListener('mousedown', onMouseDown);
-addListener('keydown', onKeyDown);
+addListeners();
+
+// This is a hack to make things work in documents that rewrite themselves using
+// document.open(). When they do that, the document gets reset, and all of our
+// listeners get lost. This re-adds them. This event gets sent by background.js.
+//
+// In particular, this applies to amazon product pages, which use document.open()
+// to dynamically generate an iframe.
+//
+// We can't monkeypatch document.open from this context (content_script). We could
+// inject a script into the page context, but it's hard for the page to communicate
+// back once document.open gets called, because all handlers (including for message
+// events) get cleared. So we just do this unconditionally. Re-adding the listeners
+// is a cheap no-op anyway. We could probably get away with making this the *only*
+// place where we add the listeners, but I'm keeping the call above to ensure we add
+// them as early as possible in the common case.
+chrome.runtime.onMessage.addListener((request, _sender, _sendResponse) => {
+    if (request.event === "onCommitted") {
+        addListeners();
+    }
+});

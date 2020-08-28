@@ -29,12 +29,6 @@ var defaultOptions = {
     excluded          : "example.com, another.example.com"
 }
 
-
-// Fired when the extension is first installed,
-// when the extension is updated to a new version,
-// and when Chrome is updated to a new version.
-chrome.runtime.onInstalled.addListener(init);
-
 function init(details) {
     if (details.reason == "install") {
         chrome.storage.sync.set(defaultOptions);
@@ -52,3 +46,18 @@ function addSmoothScrollToTab(tab) {
         allFrames: true
     });
 }
+
+function onCommitted(details) {
+    // See the onMessage listener in sscr.js for why we need this.
+    chrome.tabs.sendMessage(
+        details.tabId, {event: "onCommitted"}, {frameId: details.frameId}
+    );
+}
+
+// Fired when the extension is first installed,
+// when the extension is updated to a new version,
+// and when Chrome is updated to a new version.
+chrome.runtime.onInstalled.addListener(init);
+
+// Fired when each frame starts loading.
+chrome.webNavigation.onCommitted.addListener(onCommitted);
