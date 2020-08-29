@@ -171,6 +171,14 @@ function onLoad() {
         body.style.backgroundAttachment = 'scroll';
         html.style.backgroundAttachment = 'scroll';
     }
+
+    // Example: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3800408/
+    if (document.URL.startsWith("https://www.ncbi.nlm.nih.gov")) {
+        // These pages start with the search bar focused, which prevents
+        // scrolling with the keyboard.
+        // @ts-ignore downcast
+        document.activeElement.blur();
+    }
 }
 
 /************************************************
