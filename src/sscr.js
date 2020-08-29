@@ -670,6 +670,11 @@ function getCache(el) {
     return cacheY[uniqueID(el)];
 }
 
+function getShadowRootHost(el) {
+    let res = el.getRootNode();
+    return (res instanceof HTMLDocument) ? null : res.host;
+}
+
 //  (body)                (root)
 //         | hidden | visible | scroll |  auto  |
 // hidden  |   no   |    no   |   YES  |   YES  |
@@ -690,8 +695,10 @@ function overflowingAncestor(el) {
         if (rootScrollHeight === el.scrollHeight) {
             let topOverflowsNotHidden = overflowNotHidden(root) && overflowNotHidden(body);
             let isOverflowCSS = topOverflowsNotHidden || overflowAutoOrScroll(root);
-            if (isFrame && isContentOverflowing(root) ||
-               !isFrame && isOverflowCSS) {
+            // We check isContentOverflowing even when not in a frame, so that if the root
+            // isn't overflowing, we will later call getBestScrollable().
+            // Example where this applies: https://install.advancedrestclient.com/install
+            if (isContentOverflowing(root) && (isOverflowCSS || isFrame)) {
                 return setCache(elems, root);
             }
         } else if (isContentOverflowing(el) && overflowAutoOrScroll(el)) {
@@ -703,7 +710,7 @@ function overflowingAncestor(el) {
             }
             return setCache(elems, el);
         }
-    } while ((el = el.parentElement));
+    } while ((el = el.assignedSlot ?? el.parentElement ?? getShadowRootHost(el)));
     return null;
 }
 
