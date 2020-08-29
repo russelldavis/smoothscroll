@@ -458,24 +458,6 @@ function handleKeyData(keyData, actions) {
         // @ts-ignore downcast
         targetEl = document.activeElement;
         console.log("scrolling element is no longer valid, resetting to activeElement");
-
-        // I think what this really wants to be doing is reusing `overflowing`
-        // from the previous event, if it still exists. The original use case,
-        // Twitter, no longer applies as they've changed their UI. Commenting it
-        // out for now to see what breaks and then revisit it. (As-is, it's very
-        // close to the existing getBestScrollble logic that already happens below.)
-        //
-        // if (targetEl === document.body) {
-        //     // Chrome resets it to the body when an element goes away,
-        //     // but often the thing that's being scrolled is a child.
-        //     // Let's try to find it.
-        //     for (let elem of document.body.children) {
-        //         if (overflowingElement(elem)) {
-        //             targetEl = elem;
-        //             break;
-        //         }
-        //     }
-        // }
     }
 
     let overflowing;
@@ -723,29 +705,6 @@ function overflowingAncestor(el) {
     } while ((el = el.assignedSlot ?? el.parentElement ?? getShadowRootHost(el)));
     return null;
 }
-
-// HACK: copied from overflowAncestor, just removed the loop
-// function overflowingElement(el) {
-//     let elems = [];
-//     let body = document.body;
-//     let rootScrollHeight = root.scrollHeight;
-//     let cached = getCache(el);
-//     if (cached) {
-//         return setCache(elems, cached);
-//     }
-//     elems.push(el);
-//     if (rootScrollHeight === el.scrollHeight) {
-//         let topOverflowsNotHidden = overflowNotHidden(root) && overflowNotHidden(body);
-//         let isOverflowCSS = topOverflowsNotHidden || overflowAutoOrScroll(root);
-//         if (isFrame && isContentOverflowing(root) ||
-//            !isFrame && isOverflowCSS) {
-//             return setCache(elems, root);
-//         }
-//     } else if (isContentOverflowing(el) && overflowAutoOrScroll(el)) {
-//         return setCache(elems, el);
-//     }
-//     return false;
-// }
 
 function isContentOverflowing(el) {
     return el.clientHeight + 10 < el.scrollHeight;
