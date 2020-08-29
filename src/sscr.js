@@ -140,8 +140,6 @@ function onLoad() {
 
     let body = document.body;
     let html = document.documentElement;
-    let windowHeight = window.innerHeight;
-    let scrollHeight = body.scrollHeight;
 
     // Some properties like scrollTop are only set on either body or
     // documentElement, depending on quirks mode.
@@ -153,17 +151,6 @@ function onLoad() {
     // Checks if this script is running in a frame
     if (top !== self) {
         isFrame = true;
-    }
-
-    // TODO: check if clearfix is still needed
-    else if (scrollHeight > windowHeight &&
-            (body.clientHeight + 1 < body.scrollHeight &&
-             html.clientHeight + 1 < html.scrollHeight)) {
-        if (root.offsetHeight <= windowHeight) {
-            let clearfix = document.createElement('div');
-            clearfix.style.clear = 'both';
-            body.appendChild(clearfix);
-        }
     }
 
     // disable fixed background
