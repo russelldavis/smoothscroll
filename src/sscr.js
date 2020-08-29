@@ -296,6 +296,7 @@ function isScrollable(el) {
     return ["scroll", "auto"].includes(getComputedStyle(el)["overflow-y"]);
 }
 
+/** @returns HTMLElement */
 function getBestScrollable() {
     if (!cachedBestScrollable || !isScrollable(cachedBestScrollable)) {
         cachedBestScrollable = findBestScrollable(document.body);
@@ -331,6 +332,7 @@ function findElements(root, predicate) {
     return matches;
 }
 
+/** @returns HTMLElement */
 function findBestScrollable(root) {
     console.time("findBestScrollable");
     let scrollables = findElements(root, el => isScrollable(el));
@@ -674,17 +676,20 @@ function getShadowRootHost(el) {
 // scroll  |   no   |   YES   |   YES  |   YES  |
 // auto    |   no   |   YES   |   YES  |   YES  |
 
+/** @returns HTMLElement */
 function overflowingAncestor(el) {
     let elems = [];
     let body = document.body;
-    let rootScrollHeight = root.scrollHeight;
-    do {
+    while(true) {
         let cached = getCache(el);
         if (cached) {
             return setCache(elems, cached);
         }
         elems.push(el);
-        if (rootScrollHeight === el.scrollHeight) {
+        // Note that both body and documentElement will have a scrollHeight that indicates
+        // overflow, so we start this special casing as soon as we hit body, but we operate
+        // on root (which is the scrolling element — either body or documentElement).
+        if (el === body) {
             let topOverflowsNotHidden = overflowNotHidden(root) && overflowNotHidden(body);
             let isOverflowCSS = topOverflowsNotHidden || overflowAutoOrScroll(root);
             // We check isContentOverflowing even when not in a frame, so that if the root
@@ -693,15 +698,22 @@ function overflowingAncestor(el) {
             if (isContentOverflowing(root) && (isOverflowCSS || isFrame)) {
                 return setCache(elems, root);
             }
-        } else if (isContentOverflowing(el) && overflowAutoOrScroll(el)) {
+            return null;
+        }
+        if (isContentOverflowing(el) && overflowAutoOrScroll(el)) {
             return setCache(elems, el);
         }
-    } while ((el = el.assignedSlot ?? el.parentElement ?? getShadowRootHost(el)));
-    return null;
+        let nextEl = el.assignedSlot ?? el.parentElement ?? getShadowRootHost(el);
+        if (nextEl == null) {
+            console.warn("Couldn't find next ancestor element for: ", el);
+            return null;
+        }
+        el = nextEl;
+    }
 }
 
 function isContentOverflowing(el) {
-    return el.clientHeight + 10 < el.scrollHeight;
+    return el.scrollHeight > el.clientHeight;
 }
 
 function computedOverflow(el) {
