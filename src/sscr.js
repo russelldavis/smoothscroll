@@ -583,6 +583,19 @@ function onMouseDown(event) {
     targetEl = getInnerTarget(event);
 }
 
+function onBlur(event) {
+    // see onFocus for explanation
+    if (event.target instanceof Window) {
+        return;
+    }
+    // If relatedTarget is non-null, we'll get an onFocus event and handle it there
+    if (event.relatedTarget == null) {
+        // activeElement should be document.body
+        // @ts-ignore downcast
+        targetEl = document.activeElement;
+    }
+}
+
 function onFocus(event) {
     // We only want events inside the document. Could also fix this by listening on
     // document instead of window, but for now keeping that consistent for all events.
@@ -850,6 +863,7 @@ function addListener(type, fn) {
 function addListeners() {
     addListener('load', onLoad);
     addListener('focus', onFocus);
+    addListener('blur', onBlur);
     addListener("message", onMessage);
     addListener('mousedown', onMouseDown);
     addListener('keydown', onKeyDown);
