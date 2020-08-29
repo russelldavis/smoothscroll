@@ -692,15 +692,15 @@ function overflowingAncestor(el) {
         if (el === body) {
             let topOverflowsNotHidden = overflowNotHidden(root) && overflowNotHidden(body);
             let isOverflowCSS = topOverflowsNotHidden || overflowAutoOrScroll(root);
-            // We check isContentOverflowing even when not in a frame, so that if the root
+            // We check isOverflowing even when not in a frame, so that if the root
             // isn't overflowing, we will later call getBestScrollable().
             // Example where this applies: https://install.advancedrestclient.com/install
-            if (isContentOverflowing(root) && (isOverflowCSS || isFrame)) {
+            if (isOverflowing(root) && (isOverflowCSS || isFrame)) {
                 return setCache(elems, root);
             }
             return null;
         }
-        if (isContentOverflowing(el) && overflowAutoOrScroll(el)) {
+        if (isOverflowing(el) && overflowAutoOrScroll(el)) {
             return setCache(elems, el);
         }
         let nextEl = el.assignedSlot ?? el.parentElement ?? getShadowRootHost(el);
@@ -712,7 +712,7 @@ function overflowingAncestor(el) {
     }
 }
 
-function isContentOverflowing(el) {
+function isOverflowing(el) {
     return el.scrollHeight > el.clientHeight;
 }
 
