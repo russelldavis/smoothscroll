@@ -144,6 +144,8 @@ function onLoad() {
     // Some properties like scrollTop are only set on either body or
     // documentElement, depending on quirks mode.
     // See https://bugs.chromium.org/p/chromium/issues/detail?id=157855.
+    // Now that we don't support document.scrollingElement being null (see above),
+    // we could probably set this to that instead.
     root = (document.compatMode.indexOf('CSS') >= 0) ? html : body;
     // @ts-ignore downcast
     targetEl = document.activeElement;
@@ -154,7 +156,7 @@ function onLoad() {
     }
 
     // disable fixed background
-    if (!options.fixedBackground && !isExcluded) {
+    if (!options.fixedBackground) {
         body.style.backgroundAttachment = 'scroll';
         html.style.backgroundAttachment = 'scroll';
     }
