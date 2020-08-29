@@ -287,7 +287,6 @@ function scrollArray(elem, left, top) {
     pending = window.requestAnimationFrame(step);
 }
 
-// Adapted from https://stackoverflow.com/a/47647393/278488
 function isScrollable(el) {
     // offsetParent will be null if the element is `display:none` or has been
     // removed from the dom.
@@ -307,17 +306,24 @@ function getBestScrollable() {
     return cachedBestScrollable;
 }
 
-function findBestScrollable(root) {
-    let scrollables = [];
-    console.time("findBestScrollable");
+// Finds elements where predicate returns true.
+// Does not search children of matching elements.
+function findElements(root, predicate) {
+    let matches = [];
     let walker = document.createTreeWalker(
         root,
         NodeFilter.SHOW_ELEMENT,
         {
             acceptNode: function(/** @type {Element} */ node) {
-                if (isScrollable(node)) {
-                    scrollables.push(node);
+                if (predicate(node)) {
+                    matches.push(node);
                     return NodeFilter.FILTER_REJECT;
+                }
+                if (node.shadowRoot) {
+                    console.log('traversing shadow root', node);
+                    matches.push(
+                        ...findElements(node.shadowRoot, predicate)
+                    );
                 }
                 return NodeFilter.FILTER_SKIP;
             }
@@ -325,10 +331,17 @@ function findBestScrollable(root) {
     );
     let res = walker.nextNode();
     console.assert(res === null, "nextNode returned non-null:", res)
+    return matches;
+}
 
+function findBestScrollable(root) {
+    console.time("findBestScrollable");
+    let scrollables = findElements(root, el => isScrollable(el));
     let maxWidth = 0;
     let widestEl = null;
     for (let scrollable of scrollables) {
+        // TODO: compare by total client area rather than just width,
+        //   or at the very least use clientHeight as a tie breaker.
         if (scrollable.clientWidth > maxWidth) {
             maxWidth = scrollable.clientWidth;
             widestEl = scrollable;
