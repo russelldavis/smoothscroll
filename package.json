@@ -1,10 +1,5 @@
 {
-  "name": "smoothscroll",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/russelldavis/smoothscroll.git"
-  },
-  "license": "ISC",
+  "private": true,
   "dependencies": {
     "@types/chrome": "0.0.122"
   }
