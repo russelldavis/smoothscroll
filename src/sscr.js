@@ -162,7 +162,7 @@ function onLoad() {
     }
 
     // Example: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3800408/
-    if (document.URL.startsWith("https://www.ncbi.nlm.nih.gov")) {
+    if (new URL(document.URL).hostname.endsWith("ncbi.nlm.nih.gov")) {
         // These pages start with the search bar focused, which prevents
         // scrolling with the keyboard.
         // @ts-ignore downcast
