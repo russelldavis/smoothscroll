@@ -293,7 +293,7 @@ function isScrollable(el) {
     // Example of a scrollable we want to find with overflow-y set to "auto":
     // https://www.notion.so/Founding-Engineer-710e5b15e6bd41ac9ff7f38ff153f929
     // Example for "scroll": gmail
-    return ["scroll", "auto"].includes(getComputedStyle(el)["overflow-y"]);
+    return ["scroll", "auto"].includes(computedOverflowY(el));
 }
 
 /** @returns HTMLElement */
@@ -716,24 +716,24 @@ function isOverflowing(el) {
     return el.scrollHeight > el.clientHeight;
 }
 
-function computedOverflow(el) {
-    return getComputedStyle(el, '').getPropertyValue('overflow-y');
+function computedOverflowY(el) {
+    return getComputedStyle(el).overflowY;
 }
 
 // typically for <body> and <html>
 function overflowNotHidden(el) {
-    return (computedOverflow(el) !== 'hidden');
+    return (computedOverflowY(el) !== 'hidden');
 }
 
 // for all other elements
 function overflowAutoOrScroll(el) {
-    return /^(scroll|auto)$/.test(computedOverflow(el));
+    return /^(scroll|auto)$/.test(computedOverflowY(el));
 }
 
 function isScrollBehaviorSmooth(el) {
     let id = uniqueID(el);
     if (smoothBehaviorForElement[id] == null) {
-        let scrollBehavior = getComputedStyle(el, '')['scroll-behavior'];
+        let scrollBehavior = getComputedStyle(el)['scroll-behavior'];
         smoothBehaviorForElement[id] = ('smooth' === scrollBehavior);
     }
     return smoothBehaviorForElement[id];
