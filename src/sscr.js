@@ -556,7 +556,7 @@ function logEvent(event, extra) {
         return;
     }
     console.log(
-      `${event.type}: ${extra}`,
+      `${event.type}: ${extra ?? ''}`,
       event,
       "\n\ntargetEl:",
       targetEl,
