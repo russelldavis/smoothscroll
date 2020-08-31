@@ -570,13 +570,20 @@ function logEvent(event, extra) {
 // you press the arrow keys is not exposed via any API. So we attempt to replicate
 // what the browser is doing internally, tracking that element via targetEl.
 //
-// We set it here on mousedown to catch the non-focusable elements. We have a separate
-// onFocus handler that will overwrite it when something gets focused.
+// We set it here on mousedown to catch the non-focusable elements. We also have
+// onFocus and onBlur handlers that will overwrite it when something gets focused.
 // [1] Example: https://online-training.jbrains.ca/courses/the-jbrains-experience/lectures/5600334
 // Discussion: https://stackoverflow.com/questions/497094/how-do-i-find-out-which-dom-element-has-the-focus
 // Playground: http://jsfiddle.net/mklement/72rTF/
 function onMouseDown(event) {
-    targetEl = getInnerTarget(event);
+    let extra;
+    // Example site that relies on checking this:
+    // https://www.typescriptlang.org/play (monaco editor)
+    if (event.defaultPrevented) {
+        extra = "(default prevented)"
+    } else {
+        targetEl = getInnerTarget(event);
+    }
     logEvent(event, extra);
 }
 
@@ -834,19 +841,28 @@ function cleanup() {
     }
 }
 
-function addListener(type, fn) {
+function addListener(type, listener, useCapture) {
     // We listen on `window` rather than `document` so we get events first.
-    window.addEventListener(type, fn, true);
-    listeners.push([type, fn, true]);
+    window.addEventListener(type, listener, useCapture);
+    listeners.push([type, listener, useCapture]);
 }
 
 function addListeners() {
-    addListener('load', onLoad);
-    addListener('focus', onFocus);
-    addListener('blur', onBlur);
-    addListener("message", onMessage);
-    addListener('mousedown', onMouseDown);
-    addListener('keydown', onKeyDown);
+    addListener('load', onLoad, true);
+    addListener("message", onMessage, true);
+    addListener('keydown', onKeyDown, true);
+    addListener('focus', onFocus, true);
+    addListener('blur', onBlur, true);
+    // We want the non-capturing phase for mousedown events so we
+    // can act based on event.defaultPrevented. In the rare case that
+    // stopPropagation() is called and preventDefault() is *not* called,
+    // we'll miss a relevant event, but that should be super rare and
+    // this is the best we can do.
+    //
+    // Note that preventDefault() does nothing for focus/blur events,
+    // so we continue to use the capture phase for those so we don't
+    // have to worry about them not getting propagation.
+    addListener('mousedown', onMouseDown, false);
 }
 
 addListeners();
