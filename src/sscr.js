@@ -307,7 +307,7 @@ function getBestScrollable() {
 
 // Finds elements where predicate returns true.
 // Does not search children of matching elements.
-function findElements(root, predicate) {
+function findOuterElements(root, predicate) {
     let matches = [];
     let walker = document.createTreeWalker(
         root,
@@ -321,7 +321,7 @@ function findElements(root, predicate) {
                 if (node.shadowRoot) {
                     console.log('traversing shadow root', node);
                     matches.push(
-                        ...findElements(node.shadowRoot, predicate)
+                        ...findOuterElements(node.shadowRoot, predicate)
                     );
                 }
                 return NodeFilter.FILTER_SKIP;
@@ -336,7 +336,7 @@ function findElements(root, predicate) {
 /** @returns HTMLElement */
 function findBestScrollable(root) {
     console.time("findBestScrollable");
-    let scrollables = findElements(root, el => isScrollable(el));
+    let scrollables = findOuterElements(root, el => isScrollable(el));
     let maxWidth = 0;
     let widestEl = null;
     for (let scrollable of scrollables) {
