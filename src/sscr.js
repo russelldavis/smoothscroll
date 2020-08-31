@@ -66,6 +66,7 @@ let forceBestScrollable = false;
 let propagateScrollKeys = false;
 let isNotion = false;
 let listeners = [];
+let shouldLogEvents = false;
 
 /***********************************************
  * SETTINGS
@@ -550,6 +551,20 @@ function handleKeyData(keyData, actions) {
     }
 }
 
+function logEvent(event, extra) {
+    if (!shouldLogEvents) {
+        return;
+    }
+    console.log(
+      `${event.type}: ${extra}`,
+      event,
+      "\n\ntargetEl:",
+      targetEl,
+      "\n\nactiveEl:",
+      document.activeElement
+    );
+}
+
 // Some sites have scrollable areas that are not focusable.[1] If you click them
 // and press the arrow keys, they will scroll. Which element will scroll when
 // you press the arrow keys is not exposed via any API. So we attempt to replicate
@@ -562,6 +577,7 @@ function handleKeyData(keyData, actions) {
 // Playground: http://jsfiddle.net/mklement/72rTF/
 function onMouseDown(event) {
     targetEl = getInnerTarget(event);
+    logEvent(event, extra);
 }
 
 function onBlur(event) {
@@ -575,6 +591,7 @@ function onBlur(event) {
         // @ts-ignore downcast
         targetEl = document.activeElement;
     }
+    logEvent(event);
 }
 
 function onFocus(event) {
@@ -584,6 +601,7 @@ function onFocus(event) {
         return;
     }
     targetEl = getInnerTarget(event);
+    logEvent(event);
 }
 
 function getInnerTarget(event) {
