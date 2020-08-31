@@ -848,6 +848,10 @@ function addListener(type, listener, useCapture) {
 }
 
 function addListeners() {
+    // This gets called multiple times, so clear listeners first.
+    // The browser already makes re-adding a no-op, no need to explicitly
+    // removeListener (directly or indirectly via cleanup()).
+    listeners = [];
     addListener('load', onLoad, true);
     addListener("message", onMessage, true);
     addListener('keydown', onKeyDown, true);
