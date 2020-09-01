@@ -612,10 +612,10 @@ function onFocus(event) {
 }
 
 function getInnerTarget(event) {
-    // See https://stackoverflow.com/questions/47737652/detect-if-dom-element-is-custom-web-component-or-html-element
-    if (event.target.tagName?.includes("-") && event.composedPath) {
+    if (event.target.shadowRoot) {
         // The target is a webcomponent. Get the real (inner) target.
         // See https://stackoverflow.com/questions/57963312/get-event-target-inside-a-web-component
+        // Example page with webcomponents where this applies: https://install.advancedrestclient.com/install
         // @ts-ignore downcast
         return event.composedPath()[0];
     } else {
