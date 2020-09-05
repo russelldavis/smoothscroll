@@ -8,7 +8,6 @@
       "js": [ "src/sscr.js"],
       "matches": [ "http://*/*", "https://*/*", "ftp://*/*" ],
       "match_about_blank": true,
-      "exclude_globs": ["*.pdf*"],
       "run_at": "document_start"
    } ],
    "description": "Scroll smoothly on all websites with your mouse and keyboard.",
