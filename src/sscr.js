@@ -42,6 +42,7 @@ var isEnabled = true;
 var isExcluded = false;
 var isFrame = false;
 var direction = { x: 0, y: 0 };
+// This gets modified in onLoad
 var root = document.documentElement;
 /** @type HTMLElement */
 var targetEl;
@@ -148,6 +149,12 @@ function onLoad() {
     // Now that we don't support document.scrollingElement being null (see above),
     // we could probably set this to that instead.
     root = (document.compatMode.indexOf('CSS') >= 0) ? html : body;
+    // Temporary to see if switching the logic above will break anything
+    if (root !== document.scrollingElement) {
+        alert("Smoothscroll: root differs from scrollingElement. See console.");
+        console.log("root:", root);
+        console.log("scrollingElement", document.scrollingElement);
+    }
     // @ts-ignore downcast
     targetEl = document.activeElement;
 
@@ -162,8 +169,12 @@ function onLoad() {
         html.style.backgroundAttachment = 'scroll';
     }
 
-    // Example: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3800408/
-    if (new URL(document.URL).hostname.endsWith("ncbi.nlm.nih.gov")) {
+    let hostname = new URL(document.URL).hostname;
+    if (
+      // Example: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3800408/
+      hostname.endsWith("ncbi.nlm.nih.gov") ||
+      hostname.endsWith("yahoo.com")
+    ) {
         // These pages start with the search bar focused, which prevents
         // scrolling with the keyboard.
         // @ts-ignore downcast
@@ -457,7 +468,10 @@ function handleKeyData(keyData, actions) {
     // *never* has an offsetParent, and should never be getting removed or made invisible. We want
     // to keep the target as the body when a page (e.g. swift.org) has a scrollable body as well
     // as a scrollable child of body.
-    if (targetEl !== document.body && !targetEl.offsetParent) {
+    //
+    // FIXME: offsetParent is null for position:fixed elements.
+    if (targetEl.offsetParent == null && targetEl !== document.body && targetEl.ownerDocument === document) {
+        console.log("invalid:", targetEl)
         // @ts-ignore downcast
         targetEl = document.activeElement;
         console.log("scrolling element is no longer valid, resetting to activeElement");
@@ -482,6 +496,11 @@ function handleKeyData(keyData, actions) {
             // there's a scrollable div buried in the dom that this finds.
             // (They normally handle scrolling themselves but we override it;
             // see `isNotion`.)
+            //
+            // Other sites where this fixes keyboard scrolling:
+            // https://firstmonday.org/ojs/index.php/fm/article/view/7925/6630
+            // https://install.advancedrestclient.com/install
+            // https://www.scootersoftware.com/v4help/
             let bestScrollable = getBestScrollable();
             console.log("No scrollable ancestor for:", targetEl)
             if (bestScrollable) {
@@ -711,6 +730,7 @@ function overflowingAncestor(el) {
             return setCache(elems, cached);
         }
         elems.push(el);
+        // TODO: revisit this, the first statement below is not normally true.
         // Note that both body and documentElement will have a scrollHeight that indicates
         // overflow, so we start this special casing as soon as we hit body, but we operate
         // on root (which is the scrolling element — either body or documentElement).
