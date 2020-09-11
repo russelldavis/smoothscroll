@@ -366,22 +366,26 @@ function findOuterElements(root, predicate) {
     return matches;
 }
 
+function maxBy(collection, fn) {
+    let maxVal = -Infinity;
+    let maxItem = null;
+    for (let item of collection) {
+        let itemVal = fn(item);
+        if (itemVal > maxVal) {
+            maxVal = itemVal;
+            maxItem = item;
+        }
+    }
+    return maxItem;
+}
+
 /** @returns HTMLElement */
 function findBestScrollable(root) {
     console.time("findBestScrollable");
     let scrollables = findOuterElements(root, el => isScrollable(el));
-    let maxWidth = 0;
-    let widestEl = null;
-    for (let scrollable of scrollables) {
-        // TODO: compare by total client area rather than just width,
-        //   or at the very least use clientHeight as a tie breaker.
-        if (scrollable.clientWidth > maxWidth) {
-            maxWidth = scrollable.clientWidth;
-            widestEl = scrollable;
-        }
-    }
+    let best = maxBy(scrollables, el => el.clientWidth * el.clientHeight);
     console.timeEnd("findBestScrollable");
-    return widestEl;
+    return best;
 }
 
 function shouldIgnoreKeydown(keyData) {
