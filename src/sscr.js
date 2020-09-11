@@ -302,6 +302,24 @@ function isScrollable(el) {
     if (!el.offsetParent) {
         return false;
     }
+    // We inject our script into every iframe, so why do we need to handle them here (from their
+    // parent)? Because we want to be able to scroll them when the parent has the keyboard focus
+    // and the iframe is the best scrollable. We don't want to focus the iframe because that
+    // would mess up the tab order, etc. We could try a postMessage approach (like we do for
+    // scrolling the parent document from within an unscrollable iframe), but that would be way
+    // more complicated (and the cross-origin use case so far seems very rare).
+    if (el instanceof HTMLIFrameElement) {
+        // contentDocument will be null if the iframe is cross origin. There's not much we can do
+        // in that case while keeping things synchronous — we can postMessage, but that's async.
+        // scrollingElement will be null in a rare compatibility mode (see comment in onLoad); in
+        // that case treating it as nonscrollable is good enough.
+        //
+        // Note that the HTMLIFrameElement element itself isn't actually scrollable — its inner
+        // scrollingElement is. But it ends up being easiest to just return true for this element
+        // type and then special case it in getBestScrollable.
+        let innerScrollingEl = el.contentDocument?.scrollingElement;
+        return innerScrollingEl && isOverflowing(innerScrollingEl);
+    }
     // Example of a scrollable we want to find with overflow-y set to "auto":
     // https://www.notion.so/Founding-Engineer-710e5b15e6bd41ac9ff7f38ff153f929
     // Example for "scroll": gmail
@@ -313,7 +331,11 @@ function getBestScrollable() {
     if (!cachedBestScrollable || !isScrollable(cachedBestScrollable)) {
         cachedBestScrollable = findBestScrollable(document.body);
     }
-    return cachedBestScrollable;
+    if (cachedBestScrollable instanceof HTMLIFrameElement) {
+        return cachedBestScrollable.contentDocument.scrollingElement;
+    } else {
+        return cachedBestScrollable;
+    }
 }
 
 // Finds elements where predicate returns true.
