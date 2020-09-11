@@ -318,6 +318,7 @@ function isScrollable(el) {
         // scrollingElement is. But it ends up being easiest to just return true for this element
         // type and then special case it in getBestScrollable.
         let innerScrollingEl = el.contentDocument?.scrollingElement;
+        // TODO: also check that its overflow isn't set to hidden
         return innerScrollingEl && isOverflowing(innerScrollingEl);
     }
     // Example of a scrollable we want to find with overflow-y set to "auto":
@@ -352,7 +353,6 @@ function findOuterElements(root, predicate) {
                     return NodeFilter.FILTER_REJECT;
                 }
                 if (node.shadowRoot) {
-                    console.log('traversing shadow root', node);
                     matches.push(
                         ...findOuterElements(node.shadowRoot, predicate)
                     );
@@ -497,10 +497,9 @@ function handleKeyData(keyData, actions) {
     //
     // FIXME: offsetParent is null for position:fixed elements.
     if (targetEl.offsetParent == null && targetEl !== document.body && targetEl.ownerDocument === document) {
-        console.log("invalid:", targetEl)
         // @ts-ignore downcast
         targetEl = document.activeElement;
-        console.log("scrolling element is no longer valid, resetting to activeElement");
+        console.debug("scrolling element is no longer valid, resetting to activeElement");
     }
 
     let overflowing;
@@ -528,9 +527,13 @@ function handleKeyData(keyData, actions) {
             // https://install.advancedrestclient.com/install
             // https://www.scootersoftware.com/v4help/
             let bestScrollable = getBestScrollable();
-            console.log("No scrollable ancestor for:", targetEl)
+            console.debug("No scrollable ancestor for:", targetEl)
             if (bestScrollable) {
-                console.log("Using best scrollable instead:", bestScrollable)
+                console.debug("Using best scrollable instead:", bestScrollable)
+                // FIXME: getBestScrollable can return stuff that isn't currently
+                // scrollable. Either fix that, or double check here that it actually
+                // is scrollable. If you change getBestScrollable, keep in mind the
+                // forceBestScrollable case above needs to still work.
                 overflowing = bestScrollable;
                 targetEl = bestScrollable;
             }
@@ -776,6 +779,12 @@ function overflowingAncestor(el) {
         }
         let nextEl = el.assignedSlot ?? el.parentElement ?? getShadowRootHost(el);
         if (nextEl == null) {
+            // TODO: this can happen when el is the contentDocument of an iframe.
+            // But if we fix the logic above to deal with it, we'd only get here
+            // if getBestScrollable found it while it was scrollable and then later
+            // it changed to be not scrollable. I guess we can/should still deal with
+            // that here for completeness, just keep looping through the parent document.
+            // Use: el.ownerDocument.defaultView.frameElement
             console.warn("Couldn't find next ancestor element for: ", el);
             return null;
         }
