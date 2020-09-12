@@ -139,6 +139,8 @@ function onLoad() {
         //
         // To handle those pages, we'd need to replace a bunch of properties like document.scrollTop with
         // their equivalent from the window object (like window.scrollY). Not currently a priority.
+        //
+        // Example quirks mode page for testing: http://strictquirks.nl/quirks/?mode=c
         console.log("SmoothScroll is disabled due to quirks mode document with null scrollingElement");
         return;
     }
@@ -749,10 +751,10 @@ function overflowingAncestor(el) {
             return setCache(elems, cached);
         }
         elems.push(el);
-        // Note that when body has 'height: 100%', body and documentElement will have identical
-        // clientHeight and scrollHeight, both potentially indicating overflow. But setting
-        // scrollTop will only work on scrollingElement (usually documentElement). So we start
-        // this special casing as soon as we hit body, but we operate on root (scrollingElement).
+        // Note that when body has 'height: 100%' (or when in quirks mode) body and documentElement
+        // will have identical clientHeight and scrollHeight, both potentially indicating overflow.
+        // But setting scrollTop will only work on scrollingElement (root). So we start this logic
+        // as soon as we hit body, but we operate on root.
         // Example: https://chromium-review.googlesource.com/c/chromium/src/+/2404277
         //
         // Note: we normally won't hit the el === docEl case, since we'd usually hit body first
@@ -763,8 +765,8 @@ function overflowingAncestor(el) {
         if (el === body || el === docEl) {
             if (
               isOverflowing(root) &&
-              (overflowAutoOrScroll(root) ||
-                (overflowNotHidden(root) && overflowNotHidden(body)))
+              (overflowAutoOrScroll(docEl) ||
+                (overflowNotHidden(docEl) && overflowNotHidden(body)))
             ) {
                 return setCache(elems, root);
             }
