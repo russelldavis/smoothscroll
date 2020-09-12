@@ -297,10 +297,14 @@ function scrollArray(elem, left, top) {
     pending = window.requestAnimationFrame(step);
 }
 
+// This doesn't catch every way of hiding an element, but it good enough for now.
+// See https://stackoverflow.com/questions/19669786/check-if-element-is-visible-in-dom
+function visibleInDom(el) {
+    return el.getClientRects().length > 0;
+}
+
 function isScrollable(el) {
-    // offsetParent will be null if the element is `display:none` or has been
-    // removed from the dom.
-    if (!el.offsetParent) {
+    if (!visibleInDom(el)) {
         return false;
     }
     // We inject our script into every iframe, so why do we need to handle them here (from their
@@ -334,9 +338,13 @@ function getBestScrollable() {
         cachedBestScrollable = findBestScrollable(document.body);
     }
     if (cachedBestScrollable instanceof HTMLIFrameElement) {
+        // No need to check isOverflowing here — isScrollable (called above)
+        // already handles it for iframe elements.
         return cachedBestScrollable.contentDocument.scrollingElement;
-    } else {
+    } else if (isOverflowing(cachedBestScrollable)) {
         return cachedBestScrollable;
+    } else {
+        return null;
     }
 }
 
@@ -458,13 +466,12 @@ function onKeyDown(event) {
     if ((targetEl === document.body || targetEl == null) && activeUnfocusedEl != null) {
         // activeUnfocusedEl could've been removed from the DOM (e.g. on twitter clicking
         // "Show more replies") or made invisible (e.g. on twitter when closing an image
-        // popup by clicking outside it in the Gallery-closetarget grey area). Checking
-        // getClientRects catches both cases.
-        if (activeUnfocusedEl.getClientRects().length === 0) {
+        // popup by clicking outside it in the Gallery-closetarget grey area).
+        if (visibleInDom(activeUnfocusedEl)) {
+            targetEl = activeUnfocusedEl;
+        } else {
             activeUnfocusedEl = null;
             console.debug("activeUnfocusedEl element is no longer valid; scrolling body");
-        } else {
-            targetEl = activeUnfocusedEl;
         }
     }
     handleKeyData(targetEl, new KeyData(event), event);
@@ -530,15 +537,11 @@ function handleKeyData(targetEl, keyData, actions) {
             // Other sites where this fixes keyboard scrolling:
             // https://firstmonday.org/ojs/index.php/fm/article/view/7925/6630
             // https://install.advancedrestclient.com/install
-            // https://www.scootersoftware.com/v4help/
+            // https://www.scootersoftware.com/v4help/index.html?command_line_reference.html
             let bestScrollable = getBestScrollable();
             console.debug("No scrollable ancestor for:", targetEl)
             if (bestScrollable) {
                 console.debug("Using best scrollable instead:", bestScrollable)
-                // FIXME: getBestScrollable can return stuff that isn't currently
-                // scrollable. Either fix that, or double check here that it actually
-                // is scrollable. If you change getBestScrollable, keep in mind the
-                // forceBestScrollable case above needs to still work.
                 overflowing = bestScrollable;
             }
         }
