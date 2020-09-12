@@ -749,8 +749,8 @@ function overflowingAncestor(el) {
             return setCache(elems, cached);
         }
         elems.push(el);
-        // Note that when body has a style of 'height: 100%', body and documentElement will have
-        // identical clientHeight and scrollHeight, both indicating overflow. But setting
+        // Note that when body has 'height: 100%', body and documentElement will have identical
+        // clientHeight and scrollHeight, both potentially indicating overflow. But setting
         // scrollTop will only work on scrollingElement (usually documentElement). So we start
         // this special casing as soon as we hit body, but we operate on root (scrollingElement).
         // Example: https://chromium-review.googlesource.com/c/chromium/src/+/2404277
@@ -761,13 +761,11 @@ function overflowingAncestor(el) {
         // the body. Example: https://www.scootersoftware.com/v4help/index.html?command_line_reference.html
         // (after clicking on left sidebar).
         if (el === body || el === docEl) {
-            let topOverflowsNotHidden = overflowNotHidden(root) && overflowNotHidden(body);
-            let isOverflowCSS = topOverflowsNotHidden || overflowAutoOrScroll(root);
-            // We check isOverflowing even when not in a frame, so that if the root
-            // isn't overflowing, we will return null so the caller can then use
-            // getBestScrollable() instead.
-            // Example where this applies: https://install.advancedrestclient.com/install
-            if (isOverflowing(root) && (isOverflowCSS || isFrame)) {
+            if (
+              isOverflowing(root) &&
+              (overflowAutoOrScroll(root) ||
+                (overflowNotHidden(root) && overflowNotHidden(body)))
+            ) {
                 return setCache(elems, root);
             }
             return null;
