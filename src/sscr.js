@@ -44,8 +44,6 @@ var isFrame = false;
 var direction = { x: 0, y: 0 };
 // This gets modified in onLoad
 var root = document.documentElement;
-/** @type HTMLElement */
-var targetEl;
 
 const keyToCode = {
     up: 38, down: 40, spacebar: 32, pageup: 33, pagedown: 34, end: 35, home: 36
@@ -67,7 +65,10 @@ let forceBestScrollable = false;
 let propagateScrollKeys = false;
 let isNotion = false;
 let listeners = [];
+// See onMouseDown for details
+let activeUnfocusedEl = null;
 let shouldLogEvents = false;
+
 
 /***********************************************
  * SETTINGS
@@ -155,8 +156,6 @@ function onLoad() {
         console.log("root:", root);
         console.log("scrollingElement", document.scrollingElement);
     }
-    // @ts-ignore downcast
-    targetEl = document.activeElement;
 
     // Checks if this script is running in a frame
     if (top !== self) {
@@ -388,7 +387,7 @@ function findBestScrollable(root) {
     return best;
 }
 
-function shouldIgnoreKeydown(keyData) {
+function shouldIgnoreKeydown(targetEl, keyData) {
     if (!scrollKeyCodes.has(keyData.keyCode)) {
         return true;
     }
@@ -452,14 +451,20 @@ class IEventActions {
  * @param {KeyboardEvent} event
  */
 function onKeyDown(event) {
-    handleKeyData(new KeyData(event), event);
+    let targetEl = getInnerTarget(event);
+    // See onMouseDown for why we do this.
+    if ((targetEl === document.body || targetEl == null) && activeUnfocusedEl != null) {
+        targetEl = activeUnfocusedEl;
+    }
+    handleKeyData(targetEl, new KeyData(event), event);
 }
 
 /**
+ * @param {HTMLElement} targetEl
  * @param {KeyData} keyData
  * @param {IEventActions} actions
  */
-function handleKeyData(keyData, actions) {
+function handleKeyData(targetEl, keyData, actions) {
     if (keyData.altKey && keyData.shiftKey && keyData.code === "Backslash") {
         isEnabled = !isEnabled;
         console.log("SmoothScroll enabled: " + isEnabled);
@@ -470,7 +475,7 @@ function handleKeyData(keyData, actions) {
 
     // alt + up/down means "scroll no matter what"
     let forceScroll = keyData.altKey && (keyData.keyCode === keyToCode.down || keyData.keyCode === keyToCode.up);
-    if (!forceScroll && shouldIgnoreKeydown(keyData)) {
+    if (!forceScroll && shouldIgnoreKeydown(targetEl, keyData)) {
         return;
     }
 
@@ -485,21 +490,6 @@ function handleKeyData(keyData, actions) {
             console.log("Fixing scrolling for notion");
             targetEl = document.body;
         }
-    }
-
-    // Our own tracked active element could've been removed from the DOM (e.g. on twitter clicking
-    // "Show more replies") or made invisible (e.g. on twitter when closing an image popup by
-    // clicking outside it in the Gallery-closetarget grey area). Checking null offsetParent
-    // catches either case. (Do nothing when targetEl is already document.body, since that
-    // *never* has an offsetParent, and should never be getting removed or made invisible. We want
-    // to keep the target as the body when a page (e.g. swift.org) has a scrollable body as well
-    // as a scrollable child of body.
-    //
-    // FIXME: offsetParent is null for position:fixed elements.
-    if (targetEl.offsetParent == null && targetEl !== document.body && targetEl.ownerDocument === document) {
-        // @ts-ignore downcast
-        targetEl = document.activeElement;
-        console.debug("scrolling element is no longer valid, resetting to activeElement");
     }
 
     let overflowing;
@@ -535,7 +525,6 @@ function handleKeyData(keyData, actions) {
                 // is scrollable. If you change getBestScrollable, keep in mind the
                 // forceBestScrollable case above needs to still work.
                 overflowing = bestScrollable;
-                targetEl = bestScrollable;
             }
         }
     }
@@ -606,45 +595,27 @@ function logEvent(event, extra) {
     console.log(
       `${event.type}: ${extra ?? ''}`,
       event,
-      "\n\ntargetEl:",
-      targetEl,
-      "\n\nactiveEl:",
-      document.activeElement
     );
 }
 
-// Some sites have scrollable areas that are not focusable.[1] If you click them
-// and press the arrow keys, they will scroll. Which element will scroll when
-// you press the arrow keys is not exposed via any API. So we attempt to replicate
-// what the browser is doing internally, tracking that element via targetEl.
+// Some sites have scrollable areas that are not focusable. If you click them
+// and press the arrow keys, they will scroll, but the target of the keydown events
+// will be the document body. And there's no API that exposes which element would
+// scroll in such cases. So we attempt to replicate what the browser is doing
+// internally, tracking that element via activeUnfocusedEl.
 //
-// We set it here on mousedown to catch the non-focusable elements. We also have
-// onFocus and onBlur handlers that will overwrite it when something gets focused.
-// [1] Example: https://online-training.jbrains.ca/courses/the-jbrains-experience/lectures/5600334
+// We set it here on mousedown and clear it in onFocus, so it will have a value
+// only when a mousedown is not followed by a focus event, which is the exactly
+// the scenario described above.
+//
+// Example: https://online-training.jbrains.ca/courses/the-jbrains-experience/lectures/5600334
 // Discussion: https://stackoverflow.com/questions/497094/how-do-i-find-out-which-dom-element-has-the-focus
 // Playground: http://jsfiddle.net/mklement/72rTF/
 function onMouseDown(event) {
-    let extra;
-    // Example site that relies on checking this:
+    // Example site that relies on checking defaultPrevented:
     // https://www.typescriptlang.org/play (monaco editor)
-    if (event.defaultPrevented) {
-        extra = "(default prevented)"
-    } else {
-        targetEl = getInnerTarget(event);
-    }
-    logEvent(event, extra);
-}
-
-function onBlur(event) {
-    // see onFocus for explanation
-    if (event.target instanceof Window) {
-        return;
-    }
-    // If relatedTarget is non-null, we'll get an onFocus event and handle it there
-    if (event.relatedTarget == null) {
-        // activeElement should be document.body
-        // @ts-ignore downcast
-        targetEl = document.activeElement;
+    if (!event.defaultPrevented) {
+        activeUnfocusedEl = getInnerTarget(event);
     }
     logEvent(event);
 }
@@ -655,7 +626,7 @@ function onFocus(event) {
     if (event.target instanceof Window) {
         return;
     }
-    targetEl = getInnerTarget(event);
+    activeUnfocusedEl = null;
     logEvent(event);
 }
 
@@ -691,17 +662,17 @@ function onMessage(event) {
     // Don't think there's a default action, but we don't want it if there ever is
     event.preventDefault();
 
-    let iframe = getIframeForEvent(event);
-    if (iframe) {
-        // NB: This won't result in the contents of the iframe getting scrolled, but
-        // rather ensures that we scroll the overflowing ancestor of the iframe (in case
-        // there are multiple scrollables).
-        targetEl = iframe;
-    } else {
+    // NB: This won't result in the contents of the iframe getting scrolled, but
+    // rather ensures that we scroll the overflowing ancestor of the iframe (in case
+    // there are multiple scrollables).
+    /** @type HTMLElement */
+    let targetEl = getIframeForEvent(event);
+    if (targetEl == null) {
+        targetEl = document.body;
         console.warn("Couldn't find iframe for smoothscroll message");
     }
     // Pass in a dummy event for IEventActions, which will be no-ops
-    handleKeyData(data.keyData, new Event("dummy"))
+    handleKeyData(targetEl, data.keyData, new Event("dummy"))
 }
 
 /***********************************************
@@ -911,16 +882,15 @@ function addListeners() {
     addListener("message", onMessage, true);
     addListener('keydown', onKeyDown, true);
     addListener('focus', onFocus, true);
-    addListener('blur', onBlur, true);
     // We want the non-capturing phase for mousedown events so we
     // can act based on event.defaultPrevented. In the rare case that
     // stopPropagation() is called and preventDefault() is *not* called,
     // we'll miss a relevant event, but that should be super rare and
     // this is the best we can do.
     //
-    // Note that preventDefault() does nothing for focus/blur events,
-    // so we continue to use the capture phase for those so we don't
-    // have to worry about them not getting propagation.
+    // Note that preventDefault() does nothing for focus events, so we
+    // continue to use the capture phase for those so we don't have to
+    // worry about them not getting propagation.
     addListener('mousedown', onMouseDown, false);
 }
 
