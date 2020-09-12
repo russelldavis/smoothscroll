@@ -470,6 +470,21 @@ function onKeyDown(event) {
     handleKeyData(targetEl, new KeyData(event), event);
 }
 
+function overrideTargetEl(targetEl) {
+    // The notion-frame element existing means notion is done initializing.
+    // (Before that, the notion-help-button element won't exist in either mode.)
+    if (isNotion && document.querySelector(".notion-frame") != null) {
+        // The help button only exists in editing mode, which we don't want to alter.
+        if (
+          (targetEl.nodeName === 'TEXTAREA' || targetEl.isContentEditable) &&
+          document.querySelector(".notion-help-button") == null
+        ) {
+            return document.body;
+        }
+    }
+    return targetEl;
+}
+
 /**
  * @param {HTMLElement} targetEl
  * @param {KeyData} keyData
@@ -484,23 +499,12 @@ function handleKeyData(targetEl, keyData, actions) {
     }
     if (!isEnabled) return;
 
+    targetEl = overrideTargetEl(targetEl);
+
     // alt + up/down means "scroll no matter what"
     let forceScroll = keyData.altKey && (keyData.keyCode === keyToCode.down || keyData.keyCode === keyToCode.up);
     if (!forceScroll && shouldIgnoreKeydown(targetEl, keyData)) {
         return;
-    }
-
-    // The notion-frame element existing means notion is done initializing.
-    // (Before that, the notion-help-button element won't exist in either mode.)
-    if (isNotion && document.querySelector(".notion-frame") != null) {
-        // The help button only exists in editing mode, which we don't want to alter.
-        if (
-          (targetEl.nodeName === 'TEXTAREA' || targetEl.isContentEditable) &&
-          document.querySelector(".notion-help-button") == null
-        ) {
-            console.log("Fixing scrolling for notion");
-            targetEl = document.body;
-        }
     }
 
     let overflowing;
