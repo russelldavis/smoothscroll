@@ -742,21 +742,30 @@ function getShadowRootHost(el) {
 function overflowingAncestor(el) {
     let elems = [];
     let body = document.body;
+    let docEl = document.documentElement;
     while(true) {
         let cached = getCache(el);
         if (cached) {
             return setCache(elems, cached);
         }
         elems.push(el);
-        // TODO: revisit this, the first statement below is not normally true.
-        // Note that both body and documentElement will have a scrollHeight that indicates
-        // overflow, so we start this special casing as soon as we hit body, but we operate
-        // on root (which is the scrolling element — either body or documentElement).
-        if (el === body) {
+        // Note that when body has a style of 'height: 100%', body and documentElement will have
+        // identical clientHeight and scrollHeight, both indicating overflow. But setting
+        // scrollTop will only work on scrollingElement (usually documentElement). So we start
+        // this special casing as soon as we hit body, but we operate on root (scrollingElement).
+        // Example: https://chromium-review.googlesource.com/c/chromium/src/+/2404277
+        //
+        // Note: we normally won't hit the el === docEl case, since we'd usually hit body first
+        // while traversing up the tree. But this function might be called directly with docEl
+        // in a case where the user has clicked on an iframe where the container is larger than
+        // the body. Example: https://www.scootersoftware.com/v4help/index.html?command_line_reference.html
+        // (after clicking on left sidebar).
+        if (el === body || el === docEl) {
             let topOverflowsNotHidden = overflowNotHidden(root) && overflowNotHidden(body);
             let isOverflowCSS = topOverflowsNotHidden || overflowAutoOrScroll(root);
             // We check isOverflowing even when not in a frame, so that if the root
-            // isn't overflowing, we will later call getBestScrollable().
+            // isn't overflowing, we will return null so the caller can then use
+            // getBestScrollable() instead.
             // Example where this applies: https://install.advancedrestclient.com/install
             if (isOverflowing(root) && (isOverflowCSS || isFrame)) {
                 return setCache(elems, root);
@@ -768,14 +777,6 @@ function overflowingAncestor(el) {
         }
         let nextEl = el.assignedSlot ?? el.parentElement ?? getShadowRootHost(el);
         if (nextEl == null) {
-            // TODO: this can happen when el is the contentDocument of an iframe.
-            // But if we fix the logic above to deal with it, we'd only get here
-            // if getBestScrollable found it while it was scrollable and then later
-            // it changed to be not scrollable. I guess we can/should still deal with
-            // that here for completeness, just keep looping through the parent document.
-            // Use: el.ownerDocument.defaultView.frameElement
-            // Site where this happens: https://www.scootersoftware.com/v4help/index.html?command_line_reference.html
-            // (after clicking on left sidebar)
             console.warn("Couldn't find next ancestor element for: ", el);
             return null;
         }
