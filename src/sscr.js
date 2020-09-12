@@ -103,7 +103,7 @@ function initWithOptions() {
         if (domains[i] && (document.URL.indexOf(domains[i]) > -1)) {
             console.log("SmoothScroll is disabled for " + domains[i]);
             isExcluded = true;
-            cleanup();
+            removeListeners();
             return;
         }
     }
@@ -141,6 +141,7 @@ function onLoad() {
         //
         // Example quirks mode page for testing: http://strictquirks.nl/quirks/?mode=c
         console.log("SmoothScroll is disabled due to quirks mode document with null scrollingElement");
+        removeListeners();
         return;
     }
 
@@ -886,7 +887,7 @@ function pulse(x) {
 
 /************* Listeners *************/
 
-function cleanup() {
+function removeListeners() {
     while(listeners.length > 0) {
         window.removeEventListener.apply(window, listeners.pop());
     }
@@ -901,7 +902,7 @@ function addListener(type, listener, useCapture) {
 function addListeners() {
     // This gets called multiple times, so clear listeners first.
     // The browser already makes re-adding a no-op, no need to explicitly
-    // removeListener (directly or indirectly via cleanup()).
+    // removeListener (directly or indirectly via removeListeners()).
     listeners = [];
     addListener('load', onLoad, true);
     addListener("message", onMessage, true);
