@@ -767,6 +767,8 @@ function overflowingAncestor(el) {
             // it changed to be not scrollable. I guess we can/should still deal with
             // that here for completeness, just keep looping through the parent document.
             // Use: el.ownerDocument.defaultView.frameElement
+            // Site where this happens: https://www.scootersoftware.com/v4help/index.html?command_line_reference.html
+            // (after clicking on left sidebar)
             console.warn("Couldn't find next ancestor element for: ", el);
             return null;
         }
