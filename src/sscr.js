@@ -53,7 +53,7 @@ const keyToCode = {
 const scrollKeyCodes = new Set(Object.values(keyToCode));
 const arrowKeyCodes = new Set([keyToCode.up, keyToCode.down]);
 
-let cachedBestScrollable = null;
+let cachedBestScrolCandidate = null;
 // Use the "best" scrollable area, even if there's a different scrollable area
 // that's an ancestor of the active element. Set this to true for sites like
 // gmail where you want to scroll the message pane regardless of the active
@@ -303,7 +303,7 @@ function visibleInDom(el) {
     return el.getClientRects().length > 0;
 }
 
-function isScrollable(el) {
+function isScrollCandidate(el) {
     if (!visibleInDom(el)) {
         return false;
     }
@@ -334,15 +334,15 @@ function isScrollable(el) {
 
 /** @returns HTMLElement */
 function getBestScrollable() {
-    if (!cachedBestScrollable || !isScrollable(cachedBestScrollable)) {
-        cachedBestScrollable = findBestScrollable(document.body);
+    if (!cachedBestScrolCandidate || !isScrollCandidate(cachedBestScrolCandidate)) {
+        cachedBestScrolCandidate = findBestScrollCandidate(document.body);
     }
-    if (cachedBestScrollable instanceof HTMLIFrameElement) {
-        // No need to check isOverflowing here — isScrollable (called above)
+    if (cachedBestScrolCandidate instanceof HTMLIFrameElement) {
+        // No need to check isOverflowing here — isScrollCandidate (called above)
         // already handles it for iframe elements.
-        return cachedBestScrollable.contentDocument.scrollingElement;
-    } else if (isOverflowing(cachedBestScrollable)) {
-        return cachedBestScrollable;
+        return cachedBestScrolCandidate.contentDocument.scrollingElement;
+    } else if (isOverflowing(cachedBestScrolCandidate)) {
+        return cachedBestScrolCandidate;
     } else {
         return null;
     }
@@ -389,11 +389,11 @@ function maxBy(collection, fn) {
 }
 
 /** @returns HTMLElement */
-function findBestScrollable(root) {
-    console.time("findBestScrollable");
-    let scrollables = findOuterElements(root, el => isScrollable(el));
-    let best = maxBy(scrollables, el => el.clientWidth * el.clientHeight);
-    console.timeEnd("findBestScrollable");
+function findBestScrollCandidate(root) {
+    console.time("findBestScrollCandidate");
+    let candidates = findOuterElements(root, el => isScrollCandidate(el));
+    let best = maxBy(candidates, el => el.clientWidth * el.clientHeight);
+    console.timeEnd("findBestScrollCandidate");
     return best;
 }
 
