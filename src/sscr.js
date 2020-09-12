@@ -5,6 +5,8 @@
 // extension for browsers or native application
 // without getting a written permission first.
 //
+// Sites to test:
+// webcomponents: https://chromium-review.googlesource.com/c/chromium/src/+/2404277
 
 const SCROLL_MSG_ID = "01f116cd-717b-42fc-ab68-932cd0ce961d"
 
@@ -454,7 +456,16 @@ function onKeyDown(event) {
     let targetEl = getInnerTarget(event);
     // See onMouseDown for why we do this.
     if ((targetEl === document.body || targetEl == null) && activeUnfocusedEl != null) {
-        targetEl = activeUnfocusedEl;
+        // activeUnfocusedEl could've been removed from the DOM (e.g. on twitter clicking
+        // "Show more replies") or made invisible (e.g. on twitter when closing an image
+        // popup by clicking outside it in the Gallery-closetarget grey area). Checking
+        // getClientRects catches both cases.
+        if (activeUnfocusedEl.getClientRects().length === 0) {
+            activeUnfocusedEl = null;
+            console.debug("activeUnfocusedEl element is no longer valid; scrolling body");
+        } else {
+            targetEl = activeUnfocusedEl;
+        }
     }
     handleKeyData(targetEl, new KeyData(event), event);
 }
