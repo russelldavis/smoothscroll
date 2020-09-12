@@ -125,7 +125,7 @@ function initWithOptions() {
  * Sets up scrolls array, determines if frames are involved.
  */
 function onLoad() {
-    if (isExcluded || !document.body) {
+    if (isExcluded) {
         return;
     }
 
