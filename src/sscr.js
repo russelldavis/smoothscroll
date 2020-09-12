@@ -12,7 +12,6 @@ const SCROLL_MSG_ID = "01f116cd-717b-42fc-ab68-932cd0ce961d"
 
 // Scroll Variables (tweakable)
 var defaultOptions = {
-
     // Scrolling Core
     frameRate        : 150, // [Hz]
     animationTime    : 400, // [px]
@@ -517,16 +516,16 @@ function handleKeyData(targetEl, keyData, actions) {
         return;
     }
 
-    let overflowing;
+    let scrollable;
     if (forceBestScrollable) {
-        overflowing = getBestScrollable();
+        scrollable = getBestScrollable();
     } else {
-        overflowing = overflowingAncestor(targetEl);
+        scrollable = scrollableAncestor(targetEl);
         // We don't do this if we're a frame, otherwise we may find a suboptimal
         // scrollable and prevent the main scrollable in the parent from scrolling
         // (reproduce by clicking in the comments section at the bottom of
         // https://online-training.jbrains.ca/courses/the-jbrains-experience/lectures/5600334).
-        if (!overflowing && !isFrame) {
+        if (!scrollable && !isFrame) {
             // We couldn't find a scrollable ancestor. Look for the best
             // scrollable in the whole document.
             //
@@ -545,12 +544,12 @@ function handleKeyData(targetEl, keyData, actions) {
             console.debug("No scrollable ancestor for:", targetEl)
             if (bestScrollable) {
                 console.debug("Using best scrollable instead:", bestScrollable)
-                overflowing = bestScrollable;
+                scrollable = bestScrollable;
             }
         }
     }
 
-    if (!overflowing) {
+    if (!scrollable) {
         // If we're in a frame, the parent won't get the keyboard event.
         // It *would* automatically scroll if we do nothing and return here,
         // but it wouldn't be our smooth scrolling. (When pressing the spacebar
@@ -564,7 +563,7 @@ function handleKeyData(targetEl, keyData, actions) {
         return;
     }
 
-    let clientHeight = overflowing.clientHeight;
+    let clientHeight = scrollable.clientHeight;
     let shift, y = 0;
 
     switch (keyData.keyCode) {
@@ -575,7 +574,7 @@ function handleKeyData(targetEl, keyData, actions) {
             }
             // Fall through to treat cmd+up as home
         case keyToCode.home:
-            y = -overflowing.scrollTop;
+            y = -scrollable.scrollTop;
             break;
         case keyToCode.down:
             if (!keyData.metaKey) {
@@ -584,7 +583,7 @@ function handleKeyData(targetEl, keyData, actions) {
             }
             // Fall through to treat cmd+down as end
         case keyToCode.end:
-            let scroll = overflowing.scrollHeight - overflowing.scrollTop;
+            let scroll = scrollable.scrollHeight - scrollable.scrollTop;
             let scrollRemaining = scroll - clientHeight;
             y = (scrollRemaining > 0) ? scrollRemaining+10 : 0;
             break;
@@ -601,7 +600,7 @@ function handleKeyData(targetEl, keyData, actions) {
         default:
             return; // a key we don't care about
     }
-    scrollArray(overflowing, 0, y);
+    scrollArray(scrollable, 0, y);
     scheduleClearCache();
     actions.preventDefault();
     if (!propagateScrollKeys) {
@@ -750,7 +749,7 @@ function isRootScrollable(docEl, body) {
 // auto    |   no   |   YES   |   YES  |   YES  |
 
 /** @returns HTMLElement */
-function overflowingAncestor(el) {
+function scrollableAncestor(el) {
     let elems = [];
     let body = document.body;
     let docEl = document.documentElement;
