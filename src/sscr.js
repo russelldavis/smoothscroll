@@ -315,6 +315,8 @@ function isScrollCandidate(el) {
     // would mess up the tab order, etc. We could try a postMessage approach (like we do for
     // scrolling the parent document from within an unscrollable iframe), but that would be way
     // more complicated (and the cross-origin use case so far seems very rare).
+    //
+    // Example: https://www.scootersoftware.com/v4help/index.html?command_line_reference.html
     if (el instanceof HTMLIFrameElement) {
         // contentDocument will be null if the iframe is cross origin. There's not much we can do
         // in that case while keeping things synchronous — we can postMessage, but that's async.
@@ -324,9 +326,8 @@ function isScrollCandidate(el) {
         // Note that the HTMLIFrameElement element itself isn't actually scrollable — its inner
         // scrollingElement is. But it ends up being easiest to just return true for this element
         // type and then special case it in getBestScrollable.
-        let innerScrollingEl = el.contentDocument?.scrollingElement;
-        // TODO: also check that its overflow isn't set to hidden
-        return innerScrollingEl && isOverflowing(innerScrollingEl);
+        let doc = el.contentDocument;
+        return doc && isRootScrollable(doc.documentElement, doc.body);
     }
     // Example of a scrollable we want to find with overflow-y set to "auto":
     // https://www.notion.so/Founding-Engineer-710e5b15e6bd41ac9ff7f38ff153f929
@@ -341,7 +342,7 @@ function getBestScrollable() {
     }
     if (cachedBestScrolCandidate instanceof HTMLIFrameElement) {
         // No need to check isOverflowing here — isScrollCandidate (called above)
-        // already handles it for iframe elements.
+        // already handles it for iframe elements (via isRootScrollable).
         return cachedBestScrolCandidate.contentDocument.scrollingElement;
     } else if (isOverflowing(cachedBestScrolCandidate)) {
         return cachedBestScrolCandidate;
@@ -733,6 +734,14 @@ function getShadowRootHost(el) {
     return (res instanceof HTMLDocument) ? null : res.host;
 }
 
+function isRootScrollable(docEl, body) {
+    return (
+      isOverflowing(docEl) &&
+      (overflowAutoOrScroll(docEl) ||
+        (overflowNotHidden(docEl) && overflowNotHidden(body)))
+    )
+}
+
 //  (body)                (root)
 //         | hidden | visible | scroll |  auto  |
 // hidden  |   no   |    no   |   YES  |   YES  |
@@ -763,11 +772,7 @@ function overflowingAncestor(el) {
         // the body. Example: https://www.scootersoftware.com/v4help/index.html?command_line_reference.html
         // (after clicking on left sidebar).
         if (el === body || el === docEl) {
-            if (
-              isOverflowing(root) &&
-              (overflowAutoOrScroll(docEl) ||
-                (overflowNotHidden(docEl) && overflowNotHidden(body)))
-            ) {
+            if (isRootScrollable(docEl, body)) {
                 return setCache(elems, root);
             }
             return null;
