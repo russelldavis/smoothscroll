@@ -390,10 +390,10 @@ function maxBy(collection, fn) {
 
 /** @returns HTMLElement */
 function findBestScrollCandidate(root) {
-    console.time("findBestScrollCandidate");
+    let startTime = performance.now();
     let candidates = findOuterElements(root, el => isScrollCandidate(el));
     let best = maxBy(candidates, el => el.clientWidth * el.clientHeight);
-    console.timeEnd("findBestScrollCandidate");
+    console.debug("findBestScrollCandidate: %s ms", (performance.now() - startTime).toFixed(1));
     return best;
 }
 
