@@ -160,15 +160,22 @@ function onLoad() {
         html.style.backgroundAttachment = 'scroll';
     }
 
-    let hostname = new URL(document.URL).hostname;
-    if (
-      // Example: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3800408/
-      hostname.endsWith("ncbi.nlm.nih.gov") ||
-      hostname.endsWith("yahoo.com")
-    ) {
-        // These pages start with the search bar focused, which prevents
-        // scrolling with the keyboard.
-        // @ts-ignore downcast
+    clearInitialFocus();
+}
+
+// Sites that start with a focused input:
+// https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3800408/
+// https://mimestream.com/
+function clearInitialFocus() {
+    // This is needed for sites like https://www.yahoo.com/ that will otherwise
+    // refocus the element
+    let els = document.querySelectorAll('[autofocus]')
+    for (let el of els) {
+        // @ts-ignore We know the prop exists because we queried for it
+        el.autofocus = false;
+    }
+
+    if (document.activeElement instanceof HTMLInputElement) {
         document.activeElement.blur();
     }
 }
