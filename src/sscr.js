@@ -35,7 +35,7 @@ var isEnabled = true;
 var isExcluded = false;
 var isFrame = false;
 var direction = { x: 0, y: 0 };
-// This gets modified in onLoad
+// This gets modified in onDOMContentLoaded
 var root = document.documentElement;
 
 const keyToCode = {
@@ -112,7 +112,7 @@ function initWithOptions() {
     }
 }
 
-function onLoad() {
+function onDOMContentLoaded() {
     if (isExcluded) {
         return;
     }
@@ -315,8 +315,8 @@ function isScrollCandidate(el) {
     if (el instanceof HTMLIFrameElement) {
         // contentDocument will be null if the iframe is cross origin. There's not much we can do
         // in that case while keeping things synchronous — we can postMessage, but that's async.
-        // scrollingElement will be null in a rare compatibility mode (see comment in onLoad); in
-        // that case treating it as nonscrollable is good enough.
+        // scrollingElement will be null in a rare compatibility mode (see comment in
+        // onDOMContentLoaded); in that case treating it as nonscrollable is good enough.
         //
         // Note that the HTMLIFrameElement element itself isn't actually scrollable — its inner
         // scrollingElement is. But it ends up being easiest to just return true for this element
@@ -899,7 +899,7 @@ function addListeners() {
     // The browser already makes re-adding a no-op, no need to explicitly
     // removeListener (directly or indirectly via removeListeners()).
     listeners = [];
-    addListener('load', onLoad, true);
+    addListener('DOMContentLoaded', onDOMContentLoaded, true);
     addListener("message", onMessage, true);
     addListener('keydown', onKeyDown, true);
     addListener('focus', onFocus, true);
