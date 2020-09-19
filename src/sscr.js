@@ -322,7 +322,9 @@ function isScrollCandidate(el) {
         // scrollingElement is. But it ends up being easiest to just return true for this element
         // type and then special case it in getBestScrollable.
         let doc = el.contentDocument;
-        return doc && isRootScrollable(doc.documentElement, doc.body);
+        let scrollingEl = doc?.scrollingElement;
+        // See comments on similar check of document.scrollingElement in onDOMContentLoaded
+        return scrollingEl != null && isRootScrollable(scrollingEl, doc.documentElement, doc.body);
     }
     // Example of a scrollable we want to find with overflow-y set to "auto":
     // https://www.notion.so/Founding-Engineer-710e5b15e6bd41ac9ff7f38ff153f929
@@ -729,9 +731,12 @@ function getShadowRootHost(el) {
     return (res instanceof HTMLDocument) ? null : res.host;
 }
 
-function isRootScrollable(docEl, body) {
+function isRootScrollable(scrollingEl, docEl, body) {
+    // We can't just pick either docEl or body to pass to isOverflowing;
+    // it has to be the document's scrollingElement.
+    // Example (quirks mode): https://news.ycombinator.com/
     return (
-      isOverflowing(docEl) &&
+      isOverflowing(scrollingEl) &&
       (overflowAutoOrScroll(docEl) ||
         (overflowNotHidden(docEl) && overflowNotHidden(body)))
     )
@@ -767,7 +772,7 @@ function scrollableAncestor(el) {
         // the body. Example: https://www.scootersoftware.com/v4help/index.html?command_line_reference.html
         // (after clicking on left sidebar).
         if (el === body || el === docEl) {
-            if (isRootScrollable(docEl, body)) {
+            if (isRootScrollable(root, docEl, body)) {
                 return setCache(elems, root);
             }
             return null;
