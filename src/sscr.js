@@ -334,8 +334,11 @@ function isScrollCandidate(el) {
 
 /** @returns HTMLElement */
 function getBestScrollable() {
-    if (!cachedBestScrolCandidate || !isScrollCandidate(cachedBestScrolCandidate)) {
+    if (cachedBestScrolCandidate == null || !isScrollCandidate(cachedBestScrolCandidate)) {
         cachedBestScrolCandidate = findBestScrollCandidate(document.body);
+        if (cachedBestScrolCandidate == null) {
+            return null;
+        }
     }
     if (cachedBestScrolCandidate instanceof HTMLIFrameElement) {
         // No need to check isOverflowing here — isScrollCandidate (called above)
