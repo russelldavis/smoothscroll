@@ -163,6 +163,13 @@ function onDOMContentLoaded() {
     clearInitialFocus();
 }
 
+function onLoad() {
+    // Some sites set the focus after onDOMContentLoaded but before onLoad, so
+    // we call this a second time.
+    // Example: https://news.yahoo.com/mark-kelly-win-ariz-senate-153623807.html
+    clearInitialFocus();
+}
+
 // Sites that start with a focused input:
 // https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3800408/
 // https://mimestream.com/
@@ -908,6 +915,7 @@ function addListeners() {
     // removeListener (directly or indirectly via removeListeners()).
     listeners = [];
     addListener('DOMContentLoaded', onDOMContentLoaded, true);
+    addListener('load', onLoad, true);
     addListener("message", onMessage, true);
     addListener('keydown', onKeyDown, true);
     addListener('focus', onFocus, true);
