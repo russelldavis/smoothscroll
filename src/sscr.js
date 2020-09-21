@@ -57,6 +57,7 @@ let forceBestScrollable = false;
 // case where it needs to be true
 let propagateScrollKeys = false;
 let isNotion = false;
+let shouldClearFocus = true;
 let listeners = [];
 // See onMouseDown for details
 let activeUnfocusedEl = null;
@@ -109,6 +110,9 @@ function initWithOptions() {
     }
     if (document.URL.startsWith("https://www.notion.so")) {
         isNotion = true;
+    }
+    if (document.URL.startsWith("https://www.diigo.com/post")) {
+        shouldClearFocus = false;
     }
 }
 
@@ -174,6 +178,9 @@ function onLoad() {
 // https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3800408/
 // https://mimestream.com/
 function clearInitialFocus() {
+    if (!shouldClearFocus) {
+        return;
+    }
     // This is needed for sites like https://www.yahoo.com/ that will otherwise
     // refocus the element
     let els = document.querySelectorAll('[autofocus]')
