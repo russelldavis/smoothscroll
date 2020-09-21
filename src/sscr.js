@@ -63,42 +63,7 @@ let listeners = [];
 let activeUnfocusedEl = null;
 
 
-/***********************************************
- * SETTINGS
- ***********************************************/
-
-chrome.storage.sync.get(defaultOptions, function (syncedOptions) {
-
-    // @ts-ignore
-    options = syncedOptions;
-
-    // it seems that sometimes settings come late
-    // and we need to test again for excluded pages
-    initWithOptions();
-});
-
-
-/***********************************************
- * INITIALIZE
- ***********************************************/
-
-/**
- * Tests if smooth scrolling is allowed. Shuts down everything if not.
- */
-function initWithOptions() {
-    // disable everything if the page is blacklisted
-    let domains = options.excluded.split(/[,\n] ?/);
-    domains.push('play.google.com/music'); // problem with Polymer elements
-    domains.push('strava.com'); // slow scrolling for some reason
-    for (let i = domains.length; i--;) {
-        // domains[i] can be empty if options.excluded is empty, or if there are blank lines
-        if (domains[i] && (document.URL.indexOf(domains[i]) > -1)) {
-            console.log("SmoothScroll is disabled for " + domains[i]);
-            isExcluded = true;
-            removeListeners();
-            return;
-        }
-    }
+function init() {
     if (document.URL.startsWith("https://mail.google.com")) {
         forceBestScrollable = true;
         propagateScrollKeys = false;
@@ -113,6 +78,24 @@ function initWithOptions() {
     }
     if (document.URL.startsWith("https://www.diigo.com/post")) {
         shouldClearFocus = false;
+    }
+}
+
+function onOptionsLoaded(loadedOptions) {
+    options = loadedOptions;
+
+    // disable everything if the page is blacklisted
+    let domains = options.excluded.split(/[,\n] ?/);
+    domains.push('play.google.com/music'); // problem with Polymer elements
+    domains.push('strava.com'); // slow scrolling for some reason
+    for (let i = domains.length; i--;) {
+        // domains[i] can be empty if options.excluded is empty, or if there are blank lines
+        if (domains[i] && (document.URL.indexOf(domains[i]) > -1)) {
+            console.log("SmoothScroll is disabled for " + domains[i]);
+            isExcluded = true;
+            removeListeners();
+            return;
+        }
     }
 }
 
@@ -941,6 +924,8 @@ function addListeners() {
 // Sites to test:
 // webcomponents: https://chromium-review.googlesource.com/c/chromium/src/+/2404277
 function main() {
+    init();
+    chrome.storage.sync.get(defaultOptions, onOptionsLoaded);
     addListeners();
 
     // This is a hack to make things work in documents that rewrite themselves using
