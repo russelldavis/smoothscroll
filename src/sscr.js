@@ -561,6 +561,17 @@ function handleKeyData(targetEl, keyData, actions) {
         return;
     }
 
+    // If scroll snapping is set to mandatory, let the browser do the scrolling. Otherwise
+    // small scroll increments will just end up snapping back to the original location,
+    // making scrolling impossible.
+    // Example: https://www.tesla.com/
+    // @ts-ignore scrollSnapType is valid
+    let sst = getComputedStyle(scrollable).scrollSnapType;
+    // This assumes the block axis is the Y axis. Could fix this by checking writing-mode.
+    if (sst === 'y mandatory' || sst === 'both mandatory' || sst === 'block mandatory') {
+        return;
+    }
+
     let clientHeight = scrollable.clientHeight;
     let shift, y = 0;
 
@@ -596,7 +607,10 @@ function handleKeyData(targetEl, keyData, actions) {
             y = clientHeight * 0.9;
             break;
         default:
-            return; // a key we don't care about
+            // This should never happen — shouldIgnoreKeydown should filter
+            // out any keys we don't handle above.
+            console.warn("Smoothscroll: unexpected keycode: ", keyData.keyCode);
+            return;
     }
     scrollArray(scrollable, 0, y);
     scheduleClearCache();
