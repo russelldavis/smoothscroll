@@ -152,9 +152,17 @@ function onDOMContentLoaded() {
 
 function onLoad() {
     // Some sites set the focus after onDOMContentLoaded but before onLoad, so
-    // we call this a second time.
+    // we try again here.
     // Example: https://news.yahoo.com/mark-kelly-win-ariz-senate-153623807.html
-    clearInitialFocus();
+    tryClearInitialFocus(0);
+}
+
+function tryClearInitialFocus(numTries) {
+    // Some sites set the focus after the onLoad event, so we keep trying for a bit.
+    // Example: https://www.philo.com/login/subscribe
+    if (!clearInitialFocus() && numTries < 10) {
+        setTimeout(tryClearInitialFocus, 50, numTries + 1);
+    }
 }
 
 // Sites that start with a focused input:
@@ -162,7 +170,7 @@ function onLoad() {
 // https://mimestream.com/
 function clearInitialFocus() {
     if (!shouldClearFocus) {
-        return;
+        return true;
     }
     // This is needed for sites like https://www.yahoo.com/ that will otherwise
     // refocus the element
@@ -174,7 +182,9 @@ function clearInitialFocus() {
 
     if (document.activeElement instanceof HTMLInputElement) {
         document.activeElement.blur();
+        return true;
     }
+    return false;
 }
 
 /************************************************
@@ -919,7 +929,10 @@ function addListeners() {
     // removeListener (directly or indirectly via removeListeners()).
     listeners = [];
     addListener('DOMContentLoaded', onDOMContentLoaded, true);
-    addListener('load', onLoad, true);
+    // We want the non-capturing phase here so we can clear any focus set by
+    // the page's own handler. Not critical though because we also set a timer
+    // to handle the focus after onLoad as well.
+    addListener('load', onLoad, false);
     addListener("message", onMessage, true);
     addListener('keydown', onKeyDown, true);
     addListener('focus', onFocus, true);
