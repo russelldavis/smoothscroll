@@ -525,6 +525,11 @@ function handleKeyData(targetEl, keyData, actions) {
     }
     if (!isEnabled) return;
 
+    if (!arrowKeyCodes.has(keyData.keyCode)) {
+        // Don't clear the focus after user input
+        shouldClearFocus = false;
+    }
+
     targetEl = overrideTargetEl(targetEl);
 
     // alt + up/down means "scroll no matter what"
@@ -668,6 +673,7 @@ function onMouseDown(event) {
     if (!event.defaultPrevented) {
         activeUnfocusedEl = getInnerTarget(event);
     }
+    // Don't clear the focus after user input
     shouldClearFocus = false;
     logEvent(event);
 }
