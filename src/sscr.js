@@ -61,7 +61,7 @@ let shouldClearFocus = true;
 let listeners = [];
 // See onMouseDown for details
 let activeUnfocusedEl = null;
-
+let clearedInitialFocusWhileNotHidden = false;
 
 function init() {
     if (document.URL.startsWith("https://mail.google.com")) {
@@ -136,10 +136,7 @@ function onDOMContentLoaded() {
         console.log("scrollingElement", document.scrollingElement);
     }
 
-    // Checks if this script is running in a frame
-    if (top !== self) {
-        isFrame = true;
-    }
+    isFrame = (top !== self);
 
     // disable fixed background
     if (!options.fixedBackground) {
@@ -147,7 +144,10 @@ function onDOMContentLoaded() {
         html.style.backgroundAttachment = 'scroll';
     }
 
-    tryClearInitialFocus(0);
+    // Not sure yet how to best handle focus in frames, ignore them for now.
+    if (!isFrame) {
+        tryClearInitialFocus(20);
+    }
 }
 
 function tryClearInitialFocus(numTries) {
@@ -155,8 +155,8 @@ function tryClearInitialFocus(numTries) {
     // Examples:
     //    https://www.philo.com/login/subscribe
     //    https://news.yahoo.com/mark-kelly-win-ariz-senate-153623807.html
-    if (!clearInitialFocus() && numTries < 20) {
-        setTimeout(tryClearInitialFocus, 50, numTries + 1);
+    if (!clearInitialFocus() && numTries > 0) {
+        setTimeout(tryClearInitialFocus, 50, numTries - 1);
     }
 }
 
@@ -171,6 +171,10 @@ function anythingIsScrollable() {
 // https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3800408/
 // https://mimestream.com/
 function clearInitialFocus() {
+    if (!document.hidden) {
+        clearedInitialFocusWhileNotHidden = true;
+    }
+
     if (!shouldClearFocus) {
         return true;
     }
@@ -679,9 +683,10 @@ function onMouseDown(event) {
 }
 
 function onFocus(event) {
-    // We only want events inside the document. Could also fix this by listening on
-    // document instead of window, but for now keeping that consistent for all events.
     if (event.target instanceof Window) {
+        if (!clearedInitialFocusWhileNotHidden) {
+            tryClearInitialFocus(10);
+        }
         return;
     }
     activeUnfocusedEl = null;
