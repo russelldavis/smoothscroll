@@ -56,7 +56,6 @@ let forceBestScrollable = false;
 // UPDATE: I'm now trying out setting to false for everything. Can't think of a
 // case where it needs to be true
 let propagateScrollKeys = false;
-let isNotion = false;
 let shouldClearFocus = true;
 let listeners = [];
 // See onMouseDown for details
@@ -73,9 +72,6 @@ function init() {
         // Without this, scrolling is broken (just freezes) if you hold down
         // an arrow key (even without this extension installed at all).
         propagateScrollKeys = false;
-    }
-    if (document.URL.startsWith("https://www.notion.so")) {
-        isNotion = true;
     }
     if (document.URL.startsWith("https://www.diigo.com/post")) {
         shouldClearFocus = false;
@@ -504,7 +500,8 @@ function onKeyDown(event) {
 function overrideTargetEl(targetEl) {
     // The notion-frame element existing means notion is done initializing.
     // (Before that, the notion-help-button element won't exist in either mode.)
-    if (isNotion && document.querySelector(".notion-frame") != null) {
+    // NB: Notion allows custom domains, so don't restrict this check to just notion.so.
+    if (document.querySelector(".notion-frame") != null) {
         // The help button only exists in editing mode, which we don't want to alter.
         if (
           (targetEl.nodeName === 'TEXTAREA' || targetEl.isContentEditable) &&
@@ -569,7 +566,7 @@ function handleKeyData(targetEl, keyData, actions) {
             // They have a fixed header and non-scrolling body. Instead,
             // there's a scrollable div buried in the dom that this finds.
             // (They normally handle scrolling themselves but we override it;
-            // see `isNotion`.)
+            // see `overrideTargetEl`.)
             //
             // Other sites where this fixes keyboard scrolling:
             // https://firstmonday.org/ojs/index.php/fm/article/view/7925/6630
