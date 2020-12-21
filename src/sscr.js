@@ -62,6 +62,7 @@ let listeners = [];
 // See onMouseDown for details
 let activeUnfocusedEl = null;
 let clearedInitialFocusWhileNotHidden = false;
+let didFirstKeypress = false;
 
 function init() {
     if (document.URL.startsWith("https://mail.google.com")) {
@@ -532,6 +533,14 @@ function handleKeyData(targetEl, keyData, actions) {
     if (!arrowKeyCodes.has(keyData.keyCode)) {
         // Don't clear the focus after user input
         shouldClearFocus = false;
+    }
+    if (!didFirstKeypress) {
+        didFirstKeypress = true;
+        // We have no way of knowing when an arbitrary web page will be done
+        // initializing and updating the DOM. For now, we reset this cache on
+        // the first keypress, which in most cases should happen after that's
+        // all finished.
+        cachedBestScrolCandidate = null;
     }
 
     targetEl = overrideTargetEl(targetEl);
