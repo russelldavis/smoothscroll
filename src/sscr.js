@@ -44,7 +44,7 @@ const keyToCode = {
 const scrollKeyCodes = new Set(Object.values(keyToCode));
 const arrowKeyCodes = new Set([keyToCode.up, keyToCode.down]);
 
-let cachedBestScrolCandidate = null;
+let cachedBestScrollCandidate = null;
 // Use the "best" scrollable area, even if there's a different scrollable area
 // that's an ancestor of the active element. Set this to true for sites like
 // gmail where you want to scroll the message pane regardless of the active
@@ -355,18 +355,18 @@ function isScrollCandidate(el) {
 
 /** @returns HTMLElement */
 function getBestScrollable() {
-    if (cachedBestScrolCandidate == null || !isScrollCandidate(cachedBestScrolCandidate)) {
-        cachedBestScrolCandidate = findBestScrollCandidate(document.body);
-        if (cachedBestScrolCandidate == null) {
+    if (cachedBestScrollCandidate == null || !isScrollCandidate(cachedBestScrollCandidate)) {
+        cachedBestScrollCandidate = findBestScrollCandidate(document.body);
+        if (cachedBestScrollCandidate == null) {
             return null;
         }
     }
-    if (cachedBestScrolCandidate instanceof HTMLIFrameElement) {
+    if (cachedBestScrollCandidate instanceof HTMLIFrameElement) {
         // No need to check isOverflowing here — isScrollCandidate (called above)
         // already handles it for iframe elements (via isRootScrollable).
-        return cachedBestScrolCandidate.contentDocument.scrollingElement;
-    } else if (isOverflowing(cachedBestScrolCandidate)) {
-        return cachedBestScrolCandidate;
+        return cachedBestScrollCandidate.contentDocument.scrollingElement;
+    } else if (isOverflowing(cachedBestScrollCandidate)) {
+        return cachedBestScrollCandidate;
     } else {
         return null;
     }
@@ -540,7 +540,7 @@ function handleKeyData(targetEl, keyData, actions) {
         // initializing and updating the DOM. For now, we reset this cache on
         // the first keypress, which in most cases should happen after that's
         // all finished.
-        cachedBestScrolCandidate = null;
+        cachedBestScrollCandidate = null;
     }
 
     targetEl = overrideTargetEl(targetEl);
