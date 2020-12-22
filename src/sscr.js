@@ -364,6 +364,7 @@ function getBestScrollable() {
     } else if (isOverflowing(cachedBestScrollCandidate)) {
         return cachedBestScrollCandidate;
     } else {
+        console.debug("cachedBestScrollCandidate is not overflowing");
         return null;
     }
 }
@@ -413,7 +414,11 @@ function findBestScrollCandidate(root) {
     let startTime = performance.now();
     let candidates = findOuterElements(root, el => isScrollCandidate(el));
     let best = maxBy(candidates, el => el.clientWidth * el.clientHeight);
-    console.debug("findBestScrollCandidate: %s ms", (performance.now() - startTime).toFixed(1));
+    console.debug(
+      "findBestScrollCandidate: %s ms, result: %o",
+      (performance.now() - startTime).toFixed(1),
+      best
+    );
     return best;
 }
 
