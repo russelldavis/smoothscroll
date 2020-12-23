@@ -378,8 +378,13 @@ function findOuterElements(root, predicate) {
         NodeFilter.SHOW_ELEMENT,
         {
             acceptNode: function(/** @type {Element} */ node) {
-                if (predicate(node)) {
-                    matches.push(node);
+                let res = predicate(node);
+                if (res) {
+                    if (Array.isArray(res)) {
+                        matches.push(...res);
+                    } else {
+                        matches.push(node);
+                    }
                     return NodeFilter.FILTER_REJECT;
                 }
                 if (node.shadowRoot) {
@@ -412,7 +417,23 @@ function maxBy(collection, fn) {
 /** @returns HTMLElement */
 function findBestScrollCandidate(root) {
     let startTime = performance.now();
-    let candidates = findOuterElements(root, el => isScrollCandidate(el));
+
+    let candidates = findOuterElements(root, (el) => {
+        if (!isScrollCandidate(el)) {
+            return false;
+        }
+        // We can't just immediately return true here, because of the following:
+        // A page might have a scroll candidate that is *not* overflowing which contains
+        // a descendant element that *is* overflowing. In that case, we want to return the
+        // overflowing descendant. (Such a site probably shouldn't be making the outer element
+        // a scroll candidate in the first place, but we need to handle it regardless.)
+        // Example site: https://autocode.com/
+        let overflowingEls = findOuterElements(el, innerEl => isOverflowing(innerEl));
+        // When nothing is overflowing (including el itself), return true to use el as a candidate
+        // (it might overflow later, e.g. in gmail after selecting a message).
+        return overflowingEls.length === 0 ? true : overflowingEls;
+    });
+
     let best = maxBy(candidates, el => el.clientWidth * el.clientHeight);
     console.debug(
       "findBestScrollCandidate: %s ms, result: %o",
