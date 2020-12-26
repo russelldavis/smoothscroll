@@ -422,13 +422,19 @@ function findBestScrollCandidate(root) {
         if (!isScrollCandidate(el)) {
             return false;
         }
-        // We can't just immediately return true here, because of the following:
+        if (isOverflowing(el)) {
+            return true;
+        }
+        // The rest of this handles the following case:
         // A page might have a scroll candidate that is *not* overflowing which contains
-        // a descendant element that *is* overflowing. In that case, we want to return the
+        // a descendant scroll candidate that *is* overflowing. In that case, we want to return the
         // overflowing descendant. (Such a site probably shouldn't be making the outer element
         // a scroll candidate in the first place, but we need to handle it regardless.)
         // Example site: https://autocode.com/
-        let overflowingEls = findOuterElements(el, innerEl => isOverflowing(innerEl));
+        let overflowingEls = findOuterElements(
+            el,
+            innerEl => isScrollCandidate(innerEl) && isOverflowing(innerEl)
+        );
         // When nothing is overflowing (including el itself), return true to use el as a candidate
         // (it might overflow later, e.g. in gmail after selecting a message).
         return overflowingEls.length === 0 ? true : overflowingEls;
