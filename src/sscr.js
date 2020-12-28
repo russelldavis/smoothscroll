@@ -342,21 +342,10 @@ function isScrollCandidate(el) {
 
 /** @returns HTMLElement */
 function getBestScrollable() {
-    if (
-        cachedBestScrollCandidate == null ||
-        !isScrollCandidate(cachedBestScrollCandidate)
-    ) {
+    if (!cachedBestScrollCandidate || !isScrollable(cachedBestScrollCandidate)) {
         cachedBestScrollCandidate = findBestScrollCandidate(document.body);
-        if (cachedBestScrollCandidate == null) {
-            return null;
-        }
     }
-    if (isOverflowing(cachedBestScrollCandidate)) {
-        return cachedBestScrollCandidate;
-    } else {
-        console.debug("cachedBestScrollCandidate is not overflowing", cachedBestScrollCandidate);
-        return null;
-    }
+    return cachedBestScrollCandidate;
 }
 
 // Finds elements where predicate returns true.
@@ -443,10 +432,7 @@ function findBestScrollCandidate(root) {
         // overflowing descendant. (Such a site probably shouldn't be making the outer element
         // a scroll candidate in the first place, but we need to handle it regardless.)
         // Example site: https://autocode.com/
-        let overflowingEls = findOuterElements(
-            el,
-            innerEl => isScrollCandidate(innerEl) && isOverflowing(innerEl)
-        );
+        let overflowingEls = findOuterElements(el, innerEl => isScrollable(innerEl));
         // When nothing is overflowing (including el itself), return true to use el as a candidate
         // (it might overflow later, e.g. in gmail after selecting a message).
         return overflowingEls.length === 0 ? true : overflowingEls;
@@ -851,6 +837,10 @@ function isRootScrollable(scrollingEl, docEl, body) {
     // it has to be the document's scrollingElement.
     // Example (quirks mode): https://news.ycombinator.com/
     return isOverflowing(scrollingEl) && isRootScrollCandidate(docEl, body)
+}
+
+function isScrollable(el) {
+    return isScrollCandidate(el) && isOverflowing(el);
 }
 
 //  (body)                (root)
