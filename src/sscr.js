@@ -59,7 +59,7 @@ let propagateScrollKeys = false;
 let shouldClearFocus = true;
 let listeners = [];
 // See onMouseDown for details
-let activeUnfocusedEl = null;
+let activeClickedEl = null;
 let clearedInitialFocusWhileNotHidden = false;
 let didFirstKeypress = false;
 
@@ -514,16 +514,16 @@ class IEventActions {
  */
 function onKeyDown(event) {
     let targetEl = getInnerTarget(event);
-    // See onMouseDown for why we do this.
-    if ((targetEl === document.body || targetEl == null) && activeUnfocusedEl != null) {
-        // activeUnfocusedEl could've been removed from the DOM (e.g. on twitter clicking
+    // See onMouseDown for details on the activeClickedEl handling.
+    if (activeClickedEl != null) {
+        // activeClickedEl could've been removed from the DOM (e.g. on twitter clicking
         // "Show more replies") or made invisible (e.g. on twitter when closing an image
         // popup by clicking outside it in the Gallery-closetarget grey area).
-        if (visibleInDom(activeUnfocusedEl)) {
-            targetEl = activeUnfocusedEl;
+        if (visibleInDom(activeClickedEl)) {
+            targetEl = activeClickedEl;
         } else {
-            activeUnfocusedEl = null;
-            console.debug("activeUnfocusedEl element is no longer valid; scrolling body");
+            activeClickedEl = null;
+            console.debug("activeClickedEl element is no longer valid; scrolling body");
         }
     }
     handleKeyData(targetEl, new KeyData(event), event);
@@ -698,22 +698,36 @@ function logEvent(event, extra) {
 
 // Some sites have scrollable areas that are not focusable. If you click them
 // and press the arrow keys, they will scroll, but the target of the keydown events
-// will be the document body. And there's no API that exposes which element would
-// scroll in such cases. So we attempt to replicate what the browser is doing
-// internally, tracking that element via activeUnfocusedEl.
-//
-// We set it here on mousedown and clear it in onFocus, so it will have a value
-// only when a mousedown is not followed by a focus event, which is the exactly
-// the scenario described above.
-//
+// will be the document body.
 // Example: https://online-training.jbrains.ca/courses/the-jbrains-experience/lectures/5600334
+//
+// Other sites have something similar, but with a parent element that is focusable.
+// On these sites, the browser won't scroll the scrollable area at all (but we'd
+// like to fix that in this extension).
+// Example: https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-document-history.html
+//
+// There's no API that exposes which element would (or should) scroll in such cases.
+// So we attempt to replicate what the browser is doing internally, tracking that
+// element via activeClickedEl.
+//
 // Discussion: https://stackoverflow.com/questions/497094/how-do-i-find-out-which-dom-element-has-the-focus
 // Playground: http://jsfiddle.net/mklement/72rTF/
 function onMouseDown(event) {
     // Example site that relies on checking defaultPrevented:
     // https://www.typescriptlang.org/play (monaco editor)
     if (!event.defaultPrevented) {
-        activeUnfocusedEl = getInnerTarget(event);
+        // If this click causes an onFocus event, we don't want that event to
+        // clear out activeClickedEl, because the element getting the focus could
+        // might not be the click target itself (because the click target might not
+        // be focusable but might have an ancestor that is).
+        //
+        // In those cases, the browser doesn't normally let you scroll the click target
+        // via the keyboard, but we want to fix that. So we set activeClickedEl after
+        // the event loop runs, so the onFocus event will run first (if it runs at all).
+        // Example: https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-document-history.html
+        setTimeout(() => {
+            activeClickedEl = getInnerTarget(event);
+        }, 0);
     }
     // Don't clear the focus after user input
     shouldClearFocus = false;
@@ -727,7 +741,8 @@ function onFocus(event) {
         }
         return;
     }
-    activeUnfocusedEl = null;
+    // Something else got the focus, so the clicked element is no longer "active".
+    activeClickedEl = null;
     logEvent(event);
 }
 
