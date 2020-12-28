@@ -321,50 +321,40 @@ function isScrollCandidate(el) {
     if (!visibleInDom(el)) {
         return false;
     }
-    // We inject our script into every iframe, so why do we need to handle them here (from their
-    // parent)? Because we want to be able to scroll them when the parent has the keyboard focus
-    // and the iframe is the best scrollable. We don't want to focus the iframe because that
-    // would mess up the tab order, etc. We could try a postMessage approach (like we do for
-    // scrolling the parent document from within an unscrollable iframe), but that would be way
-    // more complicated (and the cross-origin use case so far seems very rare).
-    //
-    // Example: https://www.scootersoftware.com/v4help/index.html?command_line_reference.html
-    if (el instanceof HTMLIFrameElement) {
-        // contentDocument will be null if the iframe is cross origin. There's not much we can do
-        // in that case while keeping things synchronous — we can postMessage, but that's async.
-        // scrollingElement will be null in a rare compatibility mode (see comment in
-        // onDOMContentLoaded); in that case treating it as nonscrollable is good enough.
-        //
-        // Note that the HTMLIFrameElement element itself isn't actually scrollable — its inner
-        // scrollingElement is. But it ends up being easiest to just return true for this element
-        // type and then special case it in getBestScrollable.
-        let doc = el.contentDocument;
-        let scrollingEl = doc?.scrollingElement;
-        // See comments on similar check of document.scrollingElement in onDOMContentLoaded
-        return scrollingEl != null && isRootScrollable(scrollingEl, doc.documentElement, doc.body);
+    const ownerDoc = el.ownerDocument;
+    // scrollingElement can be null in a rare compatibility mode (see comment in
+    // onDOMContentLoaded), but it's not worth special casing, and in practice
+    // it won't be null here since findOuterElements will skip iframes where
+    // that's the case.
+    if (ownerDoc.scrollingElement === el) {
+        // The body can be null when in iframe is first initialized, before the content has loaded.
+        if (!ownerDoc.body) {
+            return false;
+        }
+        return isRootScrollCandidate(ownerDoc.documentElement, ownerDoc.body)
+    } else {
+        // Example of a scrollable we want to find with overflow-y set to "auto":
+        // https://www.notion.so/Founding-Engineer-710e5b15e6bd41ac9ff7f38ff153f929
+        // Example for "scroll": gmail
+        return overflowAutoOrScroll(el);
     }
-    // Example of a scrollable we want to find with overflow-y set to "auto":
-    // https://www.notion.so/Founding-Engineer-710e5b15e6bd41ac9ff7f38ff153f929
-    // Example for "scroll": gmail
-    return ["scroll", "auto"].includes(computedOverflowY(el));
 }
 
 /** @returns HTMLElement */
 function getBestScrollable() {
-    if (cachedBestScrollCandidate == null || !isScrollCandidate(cachedBestScrollCandidate)) {
+    if (
+        cachedBestScrollCandidate == null ||
+        !isScrollCandidate(cachedBestScrollCandidate)
+    ) {
         cachedBestScrollCandidate = findBestScrollCandidate(document.body);
         if (cachedBestScrollCandidate == null) {
             return null;
         }
     }
-    if (cachedBestScrollCandidate instanceof HTMLIFrameElement) {
-        // No need to check isOverflowing here — isScrollCandidate (called above)
-        // already handles it for iframe elements (via isRootScrollable).
-        return cachedBestScrollCandidate.contentDocument.scrollingElement;
-    } else if (isOverflowing(cachedBestScrollCandidate)) {
+    if (isOverflowing(cachedBestScrollCandidate)) {
         return cachedBestScrollCandidate;
     } else {
-        console.debug("cachedBestScrollCandidate is not overflowing");
+        console.debug("cachedBestScrollCandidate is not overflowing", cachedBestScrollCandidate);
         return null;
     }
 }
@@ -391,6 +381,28 @@ function findOuterElements(root, predicate) {
                     matches.push(
                         ...findOuterElements(node.shadowRoot, predicate)
                     );
+                }
+                // We inject our script into every iframe, so why do we need to handle them here (from their
+                // parent)? Because we want to be able to scroll them when the parent has the keyboard focus
+                // and the iframe is the best scrollable. We don't want to focus the iframe because that
+                // would mess up the tab order, etc. We could try a postMessage approach (like we do for
+                // scrolling the parent document from within an unscrollable iframe), but that would be way
+                // more complicated (and the cross-origin use case so far seems very rare).
+                //
+                // Example: https://www.scootersoftware.com/v4help/index.html?command_line_reference.html
+                if (node instanceof HTMLIFrameElement) {
+                    let iframeDoc = node.contentDocument;
+                    // contentDocument will be null if the iframe is cross origin. There's not much we can do
+                    // in that case while keeping things synchronous — we can postMessage, but that's async.
+                    //
+                    // scrollingElement can be null in a rare compatibility mode (see comment in
+                    // onDOMContentLoaded), but it's not trying to deal with that, so we just skip
+                    // those iframes.
+                    if (iframeDoc && iframeDoc.scrollingElement) {
+                        matches.push(
+                            ...findOuterElements(iframeDoc, predicate)
+                        );
+                    }
                 }
                 return NodeFilter.FILTER_SKIP;
             }
@@ -829,15 +841,16 @@ function getShadowRootHost(el) {
     return (res instanceof HTMLDocument) ? null : res.host;
 }
 
+function isRootScrollCandidate(docEl, body) {
+    return overflowAutoOrScroll(docEl) ||
+        (overflowNotHidden(docEl) && overflowNotHidden(body))
+}
+
 function isRootScrollable(scrollingEl, docEl, body) {
     // We can't just pick either docEl or body to pass to isOverflowing;
     // it has to be the document's scrollingElement.
     // Example (quirks mode): https://news.ycombinator.com/
-    return (
-      isOverflowing(scrollingEl) &&
-      (overflowAutoOrScroll(docEl) ||
-        (overflowNotHidden(docEl) && overflowNotHidden(body)))
-    )
+    return isOverflowing(scrollingEl) && isRootScrollCandidate(docEl, body)
 }
 
 //  (body)                (root)
