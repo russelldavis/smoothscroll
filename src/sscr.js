@@ -441,11 +441,15 @@ function findBestScrollCandidate(root) {
     });
 
     let best = maxBy(candidates, el => el.clientWidth * el.clientHeight);
-    console.debug(
-      "findBestScrollCandidate: %s ms, result: %o",
-      (performance.now() - startTime).toFixed(1),
-      best
-    );
+
+    // Not logging this before first keypress because it gets called a lot and spams the console.
+    if (didFirstKeypress) {
+        console.debug(
+          "findBestScrollCandidate: %s ms, result: %o",
+          (performance.now() - startTime).toFixed(1),
+          best
+        );
+    }
     return best;
 }
 
@@ -585,6 +589,8 @@ function handleKeyData(targetEl, keyData, actions) {
         scrollable = getBestScrollable();
     } else {
         scrollable = scrollableAncestor(targetEl);
+        // console.log("targetEl", targetEl, "scrollable", scrollable);
+
         // We don't do this if we're a frame, otherwise we may find a suboptimal
         // scrollable and prevent the main scrollable in the parent from scrolling
         // (reproduce by clicking in the comments section at the bottom of
