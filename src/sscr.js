@@ -238,11 +238,18 @@ function scrollArray(elem, left, top) {
         return;
     }
 
+    // If document.scrollingElement is the body, the browser uses the scroll-behavior
+    // property from document.documentElement instead.
+    // See https://developer.mozilla.org/en-US/docs/Web/CSS/scroll-behavior
+    // Example this applies to: https://gather.town/
+    const scrollBehaviorElem =
+        (elem === root && root === document.body) ? document.documentElement : elem;
+
     // if we haven't already fixed the behavior,
     // and it needs fixing for this sesh
-    if (elem.$scrollBehavior == null && isScrollBehaviorSmooth(elem)) {
-        elem.$scrollBehavior = elem.style.scrollBehavior;
-        elem.style.scrollBehavior = 'auto';
+    if (scrollBehaviorElem.$scrollBehavior == null && isScrollBehaviorSmooth(scrollBehaviorElem)) {
+        scrollBehaviorElem.$scrollBehavior = scrollBehaviorElem.style.scrollBehavior;
+        scrollBehaviorElem.style.scrollBehavior = 'auto';
     }
 
     var step = function (_time) {
@@ -300,9 +307,9 @@ function scrollArray(elem, left, top) {
         } else {
             pending = null;
             // restore default behavior at the end of scrolling sesh
-            if (elem.$scrollBehavior != null) {
-                elem.style.scrollBehavior = elem.$scrollBehavior;
-                elem.$scrollBehavior = null;
+            if (scrollBehaviorElem.$scrollBehavior != null) {
+                scrollBehaviorElem.style.scrollBehavior = scrollBehaviorElem.$scrollBehavior;
+                scrollBehaviorElem.$scrollBehavior = null;
             }
         }
     };
