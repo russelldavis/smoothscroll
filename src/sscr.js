@@ -125,7 +125,9 @@ function onDOMContentLoaded() {
     // See https://bugs.chromium.org/p/chromium/issues/detail?id=157855.
     // Now that we don't support document.scrollingElement being null (see above),
     // we could probably set this to that instead.
-    root = (document.compatMode.indexOf('CSS') >= 0) ? html : body;
+    if (document.compatMode.indexOf('CSS') === -1) {
+        root = body;
+    }
     // Temporary to see if switching the logic above will break anything
     if (root !== document.scrollingElement) {
         alert("Smoothscroll: root differs from scrollingElement. See console.");
@@ -351,8 +353,12 @@ function isScrollCandidate(el) {
 
 /** @returns HTMLElement */
 function getBestScrollable() {
+    // See comment above findBestScrollCandidate for details on why we do the caching like this
     if (!cachedBestScrollCandidate || !isScrollable(cachedBestScrollCandidate)) {
-        cachedBestScrollCandidate = findBestScrollCandidate(document.body);
+        cachedBestScrollCandidate = findBestScrollCandidate(document.documentElement);
+        if (cachedBestScrollCandidate && !isScrollable(cachedBestScrollCandidate)) {
+            return null;
+        }
     }
     return cachedBestScrollCandidate;
 }
@@ -424,6 +430,14 @@ function maxBy(collection, fn) {
     return maxItem;
 }
 
+// NB: The reason we return "candidates" here and not just elements that are actually
+// scrollable is for sites like gmail (in preview pane mode), where the preview pane is
+// the desired scrolling element, but it may not be scrollable at page load, or when an
+// arrow key is first pressed (but it *is* still a scroll candidate at those times).
+//
+// Sites like that may be pretty rare, in which case it may make sense to simplify this
+// and just special-case it, or perhaps just stop caching the result of this function,
+// which would also solve the problem.
 /** @returns HTMLElement */
 function findBestScrollCandidate(root) {
     let startTime = performance.now();
