@@ -160,10 +160,7 @@ function tryClearInitialFocus(numTries) {
 }
 
 function anythingIsScrollable() {
-    return (
-        isRootScrollable(root, document.documentElement, document.body) ||
-        getBestScrollable() != null
-    );
+    return getBestScrollable() != null;
 }
 
 // Sites that start with a focused input:
@@ -333,22 +330,51 @@ function isScrollCandidate(el) {
         return false;
     }
     const ownerDoc = el.ownerDocument;
-    // scrollingElement can be null in a rare compatibility mode (see comment in
+    const scrollingEl = ownerDoc.scrollingElement;
+
+    // scrollingEl can be null in a rare compatibility mode (see comment in
     // onDOMContentLoaded), but it's not worth special casing, and in practice
     // it won't be null here since findOuterElements will skip iframes where
     // that's the case.
-    if (ownerDoc.scrollingElement === el) {
+    if (scrollingEl === el) {
         // The body can be null when in iframe is first initialized, before the content has loaded.
         if (!ownerDoc.body) {
             return false;
         }
         return isRootScrollCandidate(ownerDoc.documentElement, ownerDoc.body)
-    } else {
-        // Example of a scrollable we want to find with overflow-y set to "auto":
-        // https://www.notion.so/Founding-Engineer-710e5b15e6bd41ac9ff7f38ff153f929
-        // Example for "scroll": gmail
-        return overflowAutoOrScroll(el);
     }
+
+    // Note that when body has 'height: 100%' (or when in quirks mode) body and documentElement
+    // will have identical clientHeight and scrollHeight, both indicating overflow when it exists.
+    // But setting scrollTop will only work on scrollingEl.
+    // Example: https://chromium-review.googlesource.com/c/chromium/src/+/2404277
+    //
+    // In a case where body and documentElement have 'height: 100%' *and* 'overflow-x: hidden',
+    // documentElement will *not* indicate overflow, while body will (even though the
+    // scrollingEl is documentElement).
+    // Example: https://blog.coupler.io/linking-google-sheets/
+    //
+    // So, we special case the first case here, and the second case should just work since this
+    // check will return false and `body` will be treated normally below.
+    //
+    // Due to the check above, we know at this point that el is not scrollingEl
+    // (which means scrollingEl is documentElement).
+    if (el === ownerDoc.body && isScrollable(scrollingEl)) {
+        return false;
+    }
+
+    // If this is true, we know el isn't the scrollingEl, otherwise we'd have handled it above.
+    // So we must be in quirks mode, and this will never be scrollable.
+    // Example where this would seem to be scrollable even though it's not:
+    // https://news.ycombinator.com/ if you set `height: 100%` on `body`.
+    if (el === ownerDoc.documentElement) {
+        return false;
+    }
+
+    // Example of a scrollable we want to find with overflow-y set to "auto":
+    // https://www.notion.so/Founding-Engineer-710e5b15e6bd41ac9ff7f38ff153f929
+    // Example for "scroll": gmail
+    return overflowAutoOrScroll(el);
 }
 
 /** @returns HTMLElement */
@@ -361,6 +387,15 @@ function getBestScrollable() {
         }
     }
     return cachedBestScrollCandidate;
+}
+
+function findOuterElementsIncludingRoot(root, predicate) {
+    const matches = [];
+    const res = predicate(root);
+    if (res) {
+        return Array.isArray(res) ? res : [res];
+    }
+    return findOuterElements(root, predicate);
 }
 
 // Finds elements where predicate returns true.
@@ -442,7 +477,7 @@ function maxBy(collection, fn) {
 function findBestScrollCandidate(root) {
     let startTime = performance.now();
 
-    let candidates = findOuterElements(root, (el) => {
+    let candidates = findOuterElementsIncludingRoot(root, (el) => {
         if (!isScrollCandidate(el)) {
             return false;
         }
@@ -861,13 +896,6 @@ function isRootScrollCandidate(docEl, body) {
         (overflowNotHidden(docEl) && overflowNotHidden(body))
 }
 
-function isRootScrollable(scrollingEl, docEl, body) {
-    // We can't just pick either docEl or body to pass to isOverflowing;
-    // it has to be the document's scrollingElement.
-    // Example (quirks mode): https://news.ycombinator.com/
-    return isOverflowing(scrollingEl) && isRootScrollCandidate(docEl, body)
-}
-
 function isScrollable(el) {
     return isScrollCandidate(el) && isOverflowing(el);
 }
@@ -882,34 +910,17 @@ function isScrollable(el) {
 /** @returns HTMLElement */
 function scrollableAncestor(el) {
     let elems = [];
-    let body = document.body;
-    let docEl = document.documentElement;
     while(true) {
         let cached = getCache(el);
         if (cached) {
             return setCache(elems, cached);
         }
+
         elems.push(el);
-        // Note that when body has 'height: 100%' (or when in quirks mode) body and documentElement
-        // will have identical clientHeight and scrollHeight, both potentially indicating overflow.
-        // But setting scrollTop will only work on scrollingElement (root). So we start this logic
-        // as soon as we hit body, but we operate on root.
-        // Example: https://chromium-review.googlesource.com/c/chromium/src/+/2404277
-        //
-        // Note: we normally won't hit the el === docEl case, since we'd usually hit body first
-        // while traversing up the tree. But this function might be called directly with docEl
-        // in a case where the user has clicked on an iframe where the container is larger than
-        // the body. Example: https://www.scootersoftware.com/v4help/index.html?command_line_reference.html
-        // (after clicking on left sidebar).
-        if (el === body || el === docEl) {
-            if (isRootScrollable(root, docEl, body)) {
-                return setCache(elems, root);
-            }
-            return null;
-        }
-        if (isOverflowing(el) && overflowAutoOrScroll(el)) {
+        if (isScrollable(el)) {
             return setCache(elems, el);
         }
+
         let nextEl = el.assignedSlot ?? el.parentElement ?? getShadowRootHost(el);
         if (nextEl == null) {
             console.warn("Couldn't find next ancestor element for: ", el);
@@ -1079,3 +1090,12 @@ function main() {
 }
 
 main();
+
+// Test cases:
+//
+// Clicking on an iframe where the container is larger than the body.
+// Example: https://www.scootersoftware.com/v4help/index.html?command_line_reference.html
+// (after clicking on left sidebar).
+//
+// Quirks mode.
+// Example: https://news.ycombinator.com/
