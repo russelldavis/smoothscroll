@@ -35,8 +35,6 @@ var isEnabled = true;
 var isExcluded = false;
 var isFrame = false;
 var direction = { x: 0, y: 0 };
-// This gets modified in onDOMContentLoaded
-var root = document.documentElement;
 
 const keyToCode = {
     up: 38, down: 40, spacebar: 32, pageup: 33, pagedown: 34, end: 35, home: 36
@@ -120,21 +118,6 @@ function onDOMContentLoaded() {
     let body = document.body;
     let html = document.documentElement;
 
-    // Some properties like scrollTop are only set on either body or
-    // documentElement, depending on quirks mode.
-    // See https://bugs.chromium.org/p/chromium/issues/detail?id=157855.
-    // Now that we don't support document.scrollingElement being null (see above),
-    // we could probably set this to that instead.
-    if (document.compatMode.indexOf('CSS') === -1) {
-        root = body;
-    }
-    // Temporary to see if switching the logic above will break anything
-    if (root !== document.scrollingElement) {
-        alert("Smoothscroll: root differs from scrollingElement. See console.");
-        console.log("root:", root);
-        console.log("scrollingElement", document.scrollingElement);
-    }
-
     isFrame = (top !== self);
 
     // disable fixed background
@@ -208,6 +191,7 @@ var lastScroll = Date.now();
  * Pushes scroll actions to the scrolling queue.
  */
 function scrollArray(elem, left, top) {
+    const scrollingEl = document.scrollingElement;
     directionCheck(left, top);
     if (options.accelerationMax !== 1) {
         var now = Date.now();
@@ -242,7 +226,7 @@ function scrollArray(elem, left, top) {
     // See https://developer.mozilla.org/en-US/docs/Web/CSS/scroll-behavior
     // Example this applies to: https://gather.town/
     const scrollBehaviorElem =
-        (elem === root && root === document.body) ? document.documentElement : elem;
+        (elem === scrollingEl && scrollingEl === document.body) ? document.documentElement : elem;
 
     // if we haven't already fixed the behavior,
     // and it needs fixing for this sesh
@@ -1099,3 +1083,8 @@ main();
 //
 // Quirks mode.
 // Example: https://news.ycombinator.com/
+//
+// Site that changes document.compatMode via document.write as it loads.
+// (Could potentially affect things if it changes document.scrollingElement and that was being
+// cached somewhere.)
+// Example: https://metaphorhacker.net/2021/01/the-nonsense-of-style-academic-writing-should-be-scrupulous-not-stylish/
