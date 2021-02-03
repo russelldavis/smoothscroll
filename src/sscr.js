@@ -763,9 +763,9 @@ function onMouseDown(event) {
     // https://www.typescriptlang.org/play (monaco editor)
     if (!event.defaultPrevented) {
         // If this click causes an onFocus event, we don't want that event to
-        // clear out activeClickedEl, because the element getting the focus could
-        // might not be the click target itself (because the click target might not
-        // be focusable but might have an ancestor that is).
+        // clear out activeClickedEl, because the element getting the focus might
+        // not be the click target itself (because the click target might not be
+        // focusable but might have an ancestor that is).
         //
         // In those cases, the browser doesn't normally let you scroll the click target
         // via the keyboard, but we want to fix that. So we set activeClickedEl after
