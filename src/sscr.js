@@ -557,44 +557,49 @@ class IEventActions {
  * @param {KeyboardEvent} event
  */
 function onKeyDown(event) {
-    let targetEl = getInnerTarget(event);
+    const keyData = new KeyData(event);
+    const inputTarget = overrideInputTarget(getInnerTarget(event));
+    let scrollTarget = inputTarget;
     // See onMouseDown for details on the activeClickedEl handling.
     if (activeClickedEl != null) {
         // activeClickedEl could've been removed from the DOM (e.g. on twitter clicking
         // "Show more replies") or made invisible (e.g. on twitter when closing an image
         // popup by clicking outside it in the Gallery-closetarget grey area).
         if (visibleInDom(activeClickedEl)) {
-            targetEl = activeClickedEl;
+            scrollTarget = activeClickedEl;
         } else {
             activeClickedEl = null;
             console.debug("activeClickedEl element is no longer valid; scrolling body");
         }
     }
-    handleKeyData(targetEl, new KeyData(event), event);
+    handleKeyData(inputTarget, scrollTarget, keyData, event);
 }
 
-function overrideTargetEl(targetEl) {
+function overrideInputTarget(inputTarget) {
     // The notion-frame element existing means notion is done initializing.
     // (Before that, the notion-help-button element won't exist in either mode.)
     // NB: Notion allows custom domains, so don't restrict this check to just notion.so.
     if (document.querySelector(".notion-frame") != null) {
         // The help button only exists in editing mode, which we don't want to alter.
         if (
-          (targetEl.nodeName === 'TEXTAREA' || targetEl.isContentEditable) &&
+          (inputTarget.nodeName === 'TEXTAREA' || inputTarget.isContentEditable) &&
           document.querySelector(".notion-help-button") == null
         ) {
             return document.body;
         }
     }
-    return targetEl;
+    return inputTarget;
 }
 
 /**
- * @param {HTMLElement} targetEl
+ * See the comment in onMouseDown for why we need separate parameters for
+ * inputTarget and scrollTarget.
+ * @param {HTMLElement} inputTarget
+ * @param {HTMLElement} scrollTarget
  * @param {KeyData} keyData
  * @param {IEventActions} actions
  */
-function handleKeyData(targetEl, keyData, actions) {
+function handleKeyData(inputTarget, scrollTarget, keyData, actions) {
     if (keyData.altKey && keyData.shiftKey && keyData.code === "Backslash") {
         isEnabled = !isEnabled;
         console.log("SmoothScroll enabled: " + isEnabled);
@@ -616,11 +621,9 @@ function handleKeyData(targetEl, keyData, actions) {
         cachedBestScrollCandidate = null;
     }
 
-    targetEl = overrideTargetEl(targetEl);
-
     // alt + up/down means "scroll no matter what"
     let forceScroll = keyData.altKey && (keyData.keyCode === keyToCode.down || keyData.keyCode === keyToCode.up);
-    if (!forceScroll && shouldIgnoreKeydown(targetEl, keyData)) {
+    if (!forceScroll && inputTarget && shouldIgnoreKeydown(inputTarget, keyData)) {
         return;
     }
 
@@ -628,8 +631,7 @@ function handleKeyData(targetEl, keyData, actions) {
     if (forceBestScrollable) {
         scrollable = getBestScrollable();
     } else {
-        scrollable = scrollableAncestor(targetEl);
-        // console.log("targetEl", targetEl, "scrollable", scrollable);
+        scrollable = scrollableAncestor(scrollTarget);
 
         // We don't do this if we're a frame, otherwise we may find a suboptimal
         // scrollable and prevent the main scrollable in the parent from scrolling
@@ -644,14 +646,14 @@ function handleKeyData(targetEl, keyData, actions) {
             // They have a fixed header and non-scrolling body. Instead,
             // there's a scrollable div buried in the dom that this finds.
             // (They normally handle scrolling themselves but we override it;
-            // see `overrideTargetEl`.)
+            // see `overrideInputTarget`.)
             //
             // Other sites where this fixes keyboard scrolling:
             // https://firstmonday.org/ojs/index.php/fm/article/view/7925/6630
             // https://install.advancedrestclient.com/install
             // https://www.scootersoftware.com/v4help/index.html?command_line_reference.html
             let bestScrollable = getBestScrollable();
-            console.debug("No scrollable ancestor for:", targetEl)
+            console.debug("No scrollable ancestor for:", scrollTarget)
             if (bestScrollable) {
                 console.debug("Using best scrollable instead:", bestScrollable)
                 scrollable = bestScrollable;
@@ -762,7 +764,7 @@ function onMouseDown(event) {
     // Example site that relies on checking defaultPrevented:
     // https://www.typescriptlang.org/play (monaco editor)
     if (!event.defaultPrevented) {
-        // If this click causes an onFocus event, we don't want that event to
+        // If this click causes an onFocus event, we don't always want that event to
         // clear out activeClickedEl, because the element getting the focus might
         // not be the click target itself (because the click target might not be
         // focusable but might have an ancestor that is).
@@ -770,6 +772,15 @@ function onMouseDown(event) {
         // In those cases, the browser doesn't normally let you scroll the click target
         // via the keyboard, but we want to fix that. So we set activeClickedEl after
         // the event loop runs, so the onFocus event will run first (if it runs at all).
+        //
+        // Note: if the focus went to an input element, that needs to take precedence over
+        // this for input handling (otherwise we'll end up swallowing the spacebar, for
+        // example); that gets taken care of in onKeyDown by having separate elements for
+        // inputTarget and scrollTarget. To see the bug that fixes, set this timeout to something
+        // larger like 2000 (it can happen with the current timeout of 0 as well, but it's harder
+        // to replicate), then change the call to handleKeyData in onKeyDown to pass in
+        // scrollTarget instead of inputTarget for the first argument. Then click on an input
+        // element, e.g. at doordash.com, and press the spacebar after 2 seconds.
         // Example: https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-document-history.html
         setTimeout(() => {
             activeClickedEl = getInnerTarget(event);
@@ -828,13 +839,15 @@ function onMessage(event) {
     // rather ensures that we scroll the overflowing ancestor of the iframe (in case
     // there are multiple scrollables).
     /** @type HTMLElement */
-    let targetEl = getIframeForEvent(event);
-    if (targetEl == null) {
-        targetEl = document.body;
+    let scrollTarget = getIframeForEvent(event);
+    if (scrollTarget == null) {
+        scrollTarget = document.body;
         console.warn("Couldn't find iframe for smoothscroll message");
     }
-    // Pass in a dummy event for IEventActions, which will be no-ops
-    handleKeyData(targetEl, data.keyData, new Event("dummy"))
+    // Passing in null for inputTarget, since we've already handled the input
+    // filtering here in this iframe.
+    // Passing in a dummy event for IEventActions, which will be no-ops.
+    handleKeyData(null, scrollTarget, data.keyData, new Event("dummy"))
 }
 
 /***********************************************
