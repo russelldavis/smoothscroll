@@ -377,7 +377,7 @@ function findOuterElementsIncludingRoot(root, predicate) {
     const matches = [];
     const res = predicate(root);
     if (res) {
-        return Array.isArray(res) ? res : [res];
+        return Array.isArray(res) ? res : [root];
     }
     return findOuterElements(root, predicate);
 }
