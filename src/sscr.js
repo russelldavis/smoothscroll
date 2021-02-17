@@ -232,7 +232,8 @@ function scrollArray(elem, left, top) {
     // and it needs fixing for this sesh
     if (scrollBehaviorElem.$scrollBehavior == null && isScrollBehaviorSmooth(scrollBehaviorElem)) {
         scrollBehaviorElem.$scrollBehavior = scrollBehaviorElem.style.scrollBehavior;
-        scrollBehaviorElem.style.scrollBehavior = 'auto';
+        scrollBehaviorElem.$scrollBehaviorPriority = scrollBehaviorElem.style.getPropertyPriority("scroll-behavior");
+        scrollBehaviorElem.style.setProperty("scroll-behavior", "auto", "important");
     }
 
     var step = function (_time) {
@@ -291,8 +292,13 @@ function scrollArray(elem, left, top) {
             pending = null;
             // restore default behavior at the end of scrolling sesh
             if (scrollBehaviorElem.$scrollBehavior != null) {
-                scrollBehaviorElem.style.scrollBehavior = scrollBehaviorElem.$scrollBehavior;
+                scrollBehaviorElem.style.setProperty(
+                    "scroll-behavior",
+                    scrollBehaviorElem.$scrollBehavior,
+                    scrollBehaviorElem.$scrollBehaviorPriority
+                );
                 scrollBehaviorElem.$scrollBehavior = null;
+                scrollBehaviorElem.$scrollBehaviorPriority = null;
             }
         }
     };
