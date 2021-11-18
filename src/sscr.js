@@ -926,7 +926,6 @@ function scrollableAncestor(el) {
 
         let nextEl = el.assignedSlot ?? el.parentElement ?? getShadowRootHost(el);
         if (nextEl == null) {
-            console.warn("Couldn't find next ancestor element for: ", el);
             return null;
         }
         el = nextEl;
