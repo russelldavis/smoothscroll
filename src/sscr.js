@@ -658,8 +658,8 @@ function handleKeyData(inputTarget, scrollTarget, keyData, actions) {
             // https://firstmonday.org/ojs/index.php/fm/article/view/7925/6630
             // https://install.advancedrestclient.com/install
             // https://www.scootersoftware.com/v4help/index.html?command_line_reference.html
-            let bestScrollable = getBestScrollable();
             console.debug("No scrollable ancestor for:", scrollTarget)
+            let bestScrollable = getBestScrollable();
             if (bestScrollable) {
                 console.debug("Using best scrollable instead:", bestScrollable)
                 scrollable = bestScrollable;
