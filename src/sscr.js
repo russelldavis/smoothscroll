@@ -385,11 +385,11 @@ function getBestScrollable() {
     return cachedBestScrollCandidate;
 }
 
-const STOP_WALKING = Symbol();
-const KEEP_WALKING = Symbol();
+const WALK_NO_CHILDREN = Symbol();
+const WALK_CHILDREN = Symbol();
 function walkElementsIncludingRoot(root, predicate) {
     const res = predicate(root);
-    if (res !== STOP_WALKING) {
+    if (res !== WALK_NO_CHILDREN) {
         walkElements(root, predicate);
     }
 }
@@ -403,7 +403,7 @@ function walkElements(root, predicate) {
         {
             acceptNode: function(/** @type {Element} */ node) {
                 let res = predicate(node);
-                if (res === STOP_WALKING) {
+                if (res === WALK_NO_CHILDREN) {
                     return NodeFilter.FILTER_REJECT;
                 }
                 if (node.shadowRoot) {
@@ -465,16 +465,16 @@ function findBestScrollCandidate(root) {
 
     walkElementsIncludingRoot(root, (el) => {
         if (!visibleInDom(el)) {
-            return STOP_WALKING;
+            return WALK_NO_CHILDREN;
         }
 
         // No need to checkVisibility since we just did it above
         if (!isScrollCandidate(el, /* checkVisibility: */ false)) {
-            return KEEP_WALKING;
+            return WALK_CHILDREN;
         }
         if (isOverflowing(el)) {
             candidates.push(el);
-            return STOP_WALKING;
+            return WALK_NO_CHILDREN;
         }
         // Now we have a scroll candidate that is not overflowing.
         // That element might contain a descendant scroll candidate that *is* overflowing.
@@ -485,14 +485,14 @@ function findBestScrollCandidate(root) {
         const oldCandidatesLength = candidates.length;
         walkElements(el, (innerEl) => {
             if (!visibleInDom(el)) {
-                return STOP_WALKING;
+                return WALK_NO_CHILDREN;
             }
             // No need to checkVisibility since we just did it above
             if (isScrollable(innerEl, /* checkVisibility: */ false)) {
                 candidates.push(el);
-                return STOP_WALKING;
+                return WALK_NO_CHILDREN;
             }
-            return KEEP_WALKING;
+            return WALK_CHILDREN;
         });
         if (oldCandidatesLength === candidates.length) {
             // Nothing rooted at el is overflowing (including el itself). Add el as a candidate
@@ -500,7 +500,7 @@ function findBestScrollCandidate(root) {
             candidates.push(el);
         }
         // We already walked all of el above.
-        return STOP_WALKING;
+        return WALK_NO_CHILDREN;
     });
 
     let best = maxBy(candidates, el => el.clientWidth * el.clientHeight);
