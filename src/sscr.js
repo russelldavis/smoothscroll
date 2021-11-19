@@ -310,9 +310,15 @@ function scrollArray(elem, left, top) {
 // This doesn't catch every way of hiding an element, but it good enough for now.
 // See https://stackoverflow.com/questions/19669786/check-if-element-is-visible-in-dom
 function visibleInDom(el) {
+    // We used to just check whether el.getClientRects().length > 0.
+    // We now check the position of the bounding rect to account for elements that are placed
+    // offscreen as a way of hiding them. Example where this matters (ehrn trying to scroll the
+    // document with spacebar in Viewing mode):
+    // https://docs.google.com/document/d/1smLAXs-DSLLmkEt4FIPP7PVglJXOcwRc7A5G0SEwxaY/edit#heading=h.hykhktoizkjj
+    const rect = el.getBoundingClientRect();
     // Example where checking visibility matters (after clicking the Read More link to open an overlay):
     // https://www.mazdausa.com/shopping-tools/build-and-price/2020-mazda3-sedan#s=1&tr=Automatic&d=AWD&f=Gasoline&t=20M3SSE%7C20M3SSEXA&ex=42M&in=V_BY3&p=&ip=1SE&o=&io=
-    return el.getClientRects().length > 0 && getComputedStyle(el).visibility !== "hidden";
+    return rect.bottom > 0 && rect.right > 0 && getComputedStyle(el).visibility !== "hidden";
 }
 
 function isScrollCandidate(el) {
