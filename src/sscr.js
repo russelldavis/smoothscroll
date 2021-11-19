@@ -330,7 +330,7 @@ function isScrollCandidate(el) {
 
     // scrollingEl can be null in a rare compatibility mode (see comment in
     // onDOMContentLoaded), but it's not worth special casing, and in practice
-    // it won't be null here since findOuterElements will skip iframes where
+    // it won't be null here since walkElements will skip iframes where
     // that's the case.
     if (scrollingEl === el) {
         // The body can be null when in iframe is first initialized, before the content has loaded.
@@ -385,37 +385,29 @@ function getBestScrollable() {
     return cachedBestScrollCandidate;
 }
 
-function findOuterElementsIncludingRoot(root, predicate) {
-    const matches = [];
+const STOP_WALKING = Symbol();
+const KEEP_WALKING = Symbol();
+function walkElementsIncludingRoot(root, predicate) {
     const res = predicate(root);
-    if (res) {
-        return Array.isArray(res) ? res : [root];
+    if (res !== STOP_WALKING) {
+        walkElements(root, predicate);
     }
-    return findOuterElements(root, predicate);
 }
 
 // Finds elements where predicate returns true.
 // Does not search children of matching elements.
-function findOuterElements(root, predicate) {
-    let matches = [];
+function walkElements(root, predicate) {
     let walker = document.createTreeWalker(
         root,
         NodeFilter.SHOW_ELEMENT,
         {
             acceptNode: function(/** @type {Element} */ node) {
                 let res = predicate(node);
-                if (res) {
-                    if (Array.isArray(res)) {
-                        matches.push(...res);
-                    } else {
-                        matches.push(node);
-                    }
+                if (res === STOP_WALKING) {
                     return NodeFilter.FILTER_REJECT;
                 }
                 if (node.shadowRoot) {
-                    matches.push(
-                        ...findOuterElements(node.shadowRoot, predicate)
-                    );
+                    walkElements(node.shadowRoot, predicate);
                 }
                 // We inject our script into every iframe, so why do we need to handle them here (from their
                 // parent)? Because we want to be able to scroll them when the parent has the keyboard focus
@@ -434,9 +426,7 @@ function findOuterElements(root, predicate) {
                     // onDOMContentLoaded), but it's not trying to deal with that, so we just skip
                     // those iframes.
                     if (iframeDoc && iframeDoc.scrollingElement) {
-                        matches.push(
-                            ...findOuterElements(iframeDoc, predicate)
-                        );
+                        walkElements(iframeDoc, predicate);
                     }
                 }
                 return NodeFilter.FILTER_SKIP;
@@ -445,7 +435,6 @@ function findOuterElements(root, predicate) {
     );
     let res = walker.nextNode();
     console.assert(res === null, "nextNode returned non-null:", res)
-    return matches;
 }
 
 function maxBy(collection, fn) {
@@ -472,24 +461,37 @@ function maxBy(collection, fn) {
 /** @returns HTMLElement */
 function findBestScrollCandidate(root) {
     let startTime = performance.now();
+    const candidates = [];
 
-    let candidates = findOuterElementsIncludingRoot(root, (el) => {
+    walkElementsIncludingRoot(root, (el) => {
         if (!isScrollCandidate(el)) {
-            return false;
+            return KEEP_WALKING;
         }
         if (isOverflowing(el)) {
-            return true;
+            candidates.push(el);
+            return STOP_WALKING;
         }
-        // The rest of this handles the following case:
-        // A page might have a scroll candidate that is *not* overflowing which contains
-        // a descendant scroll candidate that *is* overflowing. In that case, we want to return the
-        // overflowing descendant. (Such a site probably shouldn't be making the outer element
-        // a scroll candidate in the first place, but we need to handle it regardless.)
+        // Now we have a scroll candidate that is not overflowing.
+        // That element might contain a descendant scroll candidate that *is* overflowing.
+        // In that case, we want to return the overflowing descendant. (Such a site probably
+        // shouldn't be making the outer element a scroll candidate in the first place, but we
+        // need to handle it regardless.)
         // Example site: https://autocode.com/
-        let overflowingEls = findOuterElements(el, innerEl => isScrollable(innerEl));
-        // When nothing is overflowing (including el itself), return true to use el as a candidate
-        // (it might overflow later, e.g. in gmail after selecting a message).
-        return overflowingEls.length === 0 ? true : overflowingEls;
+        const oldCandidatesLength = candidates.length;
+        walkElements(el, (innerEl) => {
+            if (isScrollable(innerEl)) {
+                candidates.push(el);
+                return STOP_WALKING;
+            }
+            return KEEP_WALKING;
+        });
+        if (oldCandidatesLength === candidates.length) {
+            // Nothing rooted at el is overflowing (including el itself). Add el as a candidate
+            // because it might overflow later, e.g. in gmail after selecting a message.
+            candidates.push(el);
+        }
+        // We already walked all of el above.
+        return STOP_WALKING;
     });
 
     let best = maxBy(candidates, el => el.clientWidth * el.clientHeight);
