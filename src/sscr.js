@@ -312,7 +312,7 @@ function scrollArray(elem, left, top) {
 function visibleInDom(el) {
     // We used to just check whether el.getClientRects().length > 0.
     // We now check the position of the bounding rect to account for elements that are placed
-    // offscreen as a way of hiding them. Example where this matters (ehrn trying to scroll the
+    // offscreen as a way of hiding them. Example where this matters (when trying to scroll the
     // document with spacebar in Viewing mode):
     // https://docs.google.com/document/d/1smLAXs-DSLLmkEt4FIPP7PVglJXOcwRc7A5G0SEwxaY/edit#heading=h.hykhktoizkjj
     const rect = el.getBoundingClientRect();
@@ -321,8 +321,8 @@ function visibleInDom(el) {
     return rect.bottom > 0 && rect.right > 0 && getComputedStyle(el).visibility !== "hidden";
 }
 
-function isScrollCandidate(el) {
-    if (!visibleInDom(el)) {
+function isScrollCandidate(el, checkVisibility = false) {
+    if (checkVisibility && !visibleInDom(el)) {
         return false;
     }
     const ownerDoc = el.ownerDocument;
@@ -464,7 +464,12 @@ function findBestScrollCandidate(root) {
     const candidates = [];
 
     walkElementsIncludingRoot(root, (el) => {
-        if (!isScrollCandidate(el)) {
+        if (!visibleInDom(el)) {
+            return STOP_WALKING;
+        }
+
+        // No need to checkVisibility since we just did it above
+        if (!isScrollCandidate(el, /* checkVisibility: */ false)) {
             return KEEP_WALKING;
         }
         if (isOverflowing(el)) {
@@ -479,7 +484,11 @@ function findBestScrollCandidate(root) {
         // Example site: https://autocode.com/
         const oldCandidatesLength = candidates.length;
         walkElements(el, (innerEl) => {
-            if (isScrollable(innerEl)) {
+            if (!visibleInDom(el)) {
+                return STOP_WALKING;
+            }
+            // No need to checkVisibility since we just did it above
+            if (isScrollable(innerEl, /* checkVisibility: */ false)) {
                 candidates.push(el);
                 return STOP_WALKING;
             }
@@ -907,8 +916,8 @@ function isRootScrollCandidate(docEl, body) {
         (overflowNotHidden(docEl) && overflowNotHidden(body))
 }
 
-function isScrollable(el) {
-    return isScrollCandidate(el) && isOverflowing(el);
+function isScrollable(el, checkVisibility = true) {
+    return isScrollCandidate(el, checkVisibility) && isOverflowing(el);
 }
 
 //  (body)                (root)
