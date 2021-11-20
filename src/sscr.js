@@ -307,6 +307,29 @@ function scrollArray(elem, left, top) {
     pending = window.requestAnimationFrame(step);
 }
 
+function getOffsetFromRoot(el) {
+    let top = 0, left = 0;
+    const elWindow = el.ownerDocument.defaultView;
+    do {
+        top += el.offsetTop || 0;
+        left += el.offsetLeft || 0;
+        el = el.offsetParent;
+    } while(el);
+
+    if (elWindow !== elWindow.top) {
+        const frameEl = elWindow.frameElement;
+        if (!frameEl) {
+            // This happens if the iframe is cross-domain
+            return null;
+        }
+        const {top: parentTop, left: parentLeft} = getOffsetFromRoot(frameEl);
+        top += parentTop;
+        left += parentLeft;
+    }
+    return {top, left};
+};
+
+
 // This doesn't catch every way of hiding an element, but it's good enough for now.
 // See https://stackoverflow.com/questions/19669786/check-if-element-is-visible-in-dom
 function visibleInDom(el) {
@@ -455,7 +478,7 @@ function maxBy(collection, fn) {
 /** @returns HTMLElement */
 function findBestScrollCandidate(root) {
     let startTime = performance.now();
-    const candidates = [];
+    let candidates = [];
 
     walkElementsIncludingRoot(root, (el) => {
         if (!visibleInDom(el)) {
@@ -495,6 +518,17 @@ function findBestScrollCandidate(root) {
         }
         // We already walked all of el above.
         return WALK_NO_CHILDREN;
+    });
+
+    // Filter out offscreen elements. We do this here rather than in the visibleInDom check above
+    // because it's an expensive operation that we don't want to do on every node.
+    // Example where this matters (when trying to scroll the document with spacebar in Viewing mode):
+    // https://docs.google.com/document/d/1smLAXs-DSLLmkEt4FIPP7PVglJXOcwRc7A5G0SEwxaY/edit#heading=h.hykhktoizkjj
+    candidates = candidates.filter((candidate) => {
+        const offset = getOffsetFromRoot(candidate);
+        return offset &&
+            ((offset.left + candidate.scrollWidth) > 0) &&
+            ((offset.top + candidate.scrollHeight) > 0);
     });
 
     let best = maxBy(candidates, el => el.clientWidth * el.clientHeight);
