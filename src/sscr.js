@@ -307,18 +307,12 @@ function scrollArray(elem, left, top) {
     pending = window.requestAnimationFrame(step);
 }
 
-// This doesn't catch every way of hiding an element, but it good enough for now.
+// This doesn't catch every way of hiding an element, but it's good enough for now.
 // See https://stackoverflow.com/questions/19669786/check-if-element-is-visible-in-dom
 function visibleInDom(el) {
-    // We used to just check whether el.getClientRects().length > 0.
-    // We now check the position of the bounding rect to account for elements that are placed
-    // offscreen as a way of hiding them. Example where this matters (when trying to scroll the
-    // document with spacebar in Viewing mode):
-    // https://docs.google.com/document/d/1smLAXs-DSLLmkEt4FIPP7PVglJXOcwRc7A5G0SEwxaY/edit#heading=h.hykhktoizkjj
-    const rect = el.getBoundingClientRect();
     // Example where checking visibility matters (after clicking the Read More link to open an overlay):
     // https://www.mazdausa.com/shopping-tools/build-and-price/2020-mazda3-sedan#s=1&tr=Automatic&d=AWD&f=Gasoline&t=20M3SSE%7C20M3SSEXA&ex=42M&in=V_BY3&p=&ip=1SE&o=&io=
-    return rect.bottom > 0 && rect.right > 0 && getComputedStyle(el).visibility !== "hidden";
+    return el.getClientRects().length > 0 && getComputedStyle(el).visibility !== "hidden";
 }
 
 function isScrollCandidate(el, checkVisibility = false) {
@@ -410,11 +404,11 @@ function walkElements(root, predicate) {
                     walkElements(node.shadowRoot, predicate);
                 }
                 // We inject our script into every iframe, so why do we need to handle them here (from their
-                // parent)? Because we want to be able to scroll them when the parent has the keyboard focus
-                // and the iframe is the best scrollable. We don't want to focus the iframe because that
-                // would mess up the tab order, etc. We could try a postMessage approach (like we do for
-                // scrolling the parent document from within an unscrollable iframe), but that would be way
-                // more complicated (and the cross-origin use case so far seems very rare).
+                // parent)? Because we want to be able to scroll them (and/or their inner elements) when the
+                // parent has the keyboard focus and the iframe is the best scrollable. We don't want to focus
+                // the iframe because that would mess up the tab order, etc. We could try a postMessage approach
+                // (like we do for scrolling the parent document from within an unscrollable iframe), but that
+                // would be way more complicated (and the cross-origin use case so far seems very rare).
                 //
                 // Example: https://www.scootersoftware.com/v4help/index.html?command_line_reference.html
                 if (node instanceof HTMLIFrameElement) {
@@ -687,9 +681,9 @@ function handleKeyData(inputTarget, scrollTarget, keyData, actions) {
     if (!scrollable) {
         // If we're in a frame, the parent won't get the keyboard event.
         // It *would* automatically scroll if we do nothing and return here,
-        // but it wouldn't be our smooth scrolling. (When pressing the spacebar
+        // but it wouldn't be our smooth scrolling. (Also, when pressing the spacebar
         // inside certain iframes (e.g. on Amazon), chrome has a bug where it
-        // won't scroll at all, so our logic here also fixes that.)
+        // won't scroll at all, so our logic here fixes that too.)
         if (isFrame) {
             parent.postMessage({id: SCROLL_MSG_ID, keyData: keyData}, "*")
             actions.stopImmediatePropagation();
