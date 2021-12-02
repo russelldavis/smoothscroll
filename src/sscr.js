@@ -878,7 +878,7 @@ function getIframeForEvent(event) {
 
 function onMessage(event) {
     let data = event.data;
-    if (data.id !== SCROLL_MSG_ID) {
+    if (data?.id !== SCROLL_MSG_ID) {
         return;
     }
 
