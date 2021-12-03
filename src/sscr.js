@@ -327,7 +327,7 @@ function getOffsetFromRoot(el) {
         left += parentLeft;
     }
     return {top, left};
-};
+}
 
 
 // This doesn't catch every way of hiding an element, but it's good enough for now.
