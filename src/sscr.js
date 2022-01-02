@@ -529,7 +529,10 @@ function findBestScrollCandidate(root) {
     // https://docs.google.com/document/d/1smLAXs-DSLLmkEt4FIPP7PVglJXOcwRc7A5G0SEwxaY/edit#heading=h.hykhktoizkjj
     candidates = candidates.filter((candidate) => {
         const offset = getOffsetFromRoot(candidate);
-        return offset &&
+        // When offset is null, we don't know if it's offscreen or not (due to a cross-domain
+        // iframe). This hasn't actually come up yet, but I'm erring towards including them
+        // as candidates until for now.
+        return !offset ||
             ((offset.left + candidate.scrollWidth) > 0) &&
             ((offset.top + candidate.scrollHeight) > 0);
     });
