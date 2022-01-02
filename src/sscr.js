@@ -322,9 +322,12 @@ function getOffsetFromRoot(el) {
             // This happens if the iframe is cross-domain
             return null;
         }
-        const {top: parentTop, left: parentLeft} = getOffsetFromRoot(frameEl);
-        top += parentTop;
-        left += parentLeft;
+        const offset = getOffsetFromRoot(frameEl);
+        if (!offset) {
+            return null;
+        }
+        top += offset.top;
+        left += offset.left;
     }
     return {top, left};
 }
