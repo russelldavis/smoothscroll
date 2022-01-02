@@ -316,7 +316,7 @@ function getOffsetFromRoot(el) {
         el = el.offsetParent;
     } while(el);
 
-    if (elWindow !== elWindow.top) {
+    if (elWindow !== document.defaultView) {
         const frameEl = elWindow.frameElement;
         if (!frameEl) {
             // This happens if the iframe is cross-domain
