@@ -60,6 +60,7 @@ let listeners = [];
 let activeClickedEl = null;
 let clearedInitialFocusWhileNotHidden = false;
 let didFirstKeypress = false;
+let isAirtable = false;
 
 function init() {
     if (document.URL.startsWith("https://mail.google.com")) {
@@ -73,6 +74,9 @@ function init() {
     }
     if (document.URL.startsWith("https://www.diigo.com/post")) {
         shouldClearFocus = false;
+    }
+    if (document.domain === "airtable.com") {
+        isAirtable = true;
     }
 }
 
@@ -587,6 +591,12 @@ function shouldIgnoreKeydown(targetEl, keyData) {
     ) {
         return true;
     }
+
+    // In airtable's grid mode, let airtable use the keys to navigate individual cells
+    if (isAirtable && document.querySelector(".cell.cursor")) {
+        return true;
+    }
+
     return false;
 }
 
