@@ -513,7 +513,7 @@ function findBestScrollCandidate(root) {
             }
             // No need to checkVisibility since we just did it above
             if (isScrollable(innerEl, /* checkVisibility: */ false)) {
-                candidates.push(el);
+                candidates.push(innerEl);
                 return WALK_NO_CHILDREN;
             }
             return WALK_CHILDREN;
