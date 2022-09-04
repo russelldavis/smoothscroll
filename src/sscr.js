@@ -601,7 +601,11 @@ function shouldIgnoreKeydown(targetEl, keyData) {
         return true;
     }
 
-    if (isSpreadsheetDotCom && document.activeElement === document.body) {
+    // On spreadsheet.com, only do smoothscrolling if the active element itself is scrollable,
+    // i.e., don't look for a scrollable ancestor or the best scrollable. We let the app handle
+    // that, since it will just navigate the grid. (We allow for a scrollable activeElement for
+    // cases like the Automations modal that has a scrollable inner section).
+    if (isSpreadsheetDotCom && !isScrollable(document.activeElement)) {
         return true;
     }
 
