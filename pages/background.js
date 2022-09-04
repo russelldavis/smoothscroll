@@ -41,7 +41,7 @@ function init(details) {
 }
 
 function addSmoothScrollToTab(tab) {
-    return chrome.tabs.executeScript(tab.id, {
+    void chrome.tabs.executeScript(tab.id, {
         file: "src/sscr.js",
         allFrames: true
     });
@@ -60,4 +60,7 @@ function onCommitted(details) {
 chrome.runtime.onInstalled.addListener(init);
 
 // Fired when each frame starts loading.
+// IMPORTANT: this will fail (chrome.webNavigation will be undefined) if you reload the extension
+// in chrome. You need to manually unload and load the extension to avoid it.
+// See https://stackoverflow.com/a/55095222/278488
 chrome.webNavigation.onCommitted.addListener(onCommitted);
