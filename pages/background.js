@@ -30,10 +30,10 @@ var defaultOptions = {
 }
 
 function init(details) {
-    if (details.reason == "install") {
-        chrome.storage.sync.set(defaultOptions);
+    if (details.reason === "install") {
+        void chrome.storage.sync.set(defaultOptions);
         var optionsPage = chrome.runtime.getURL("pages/options.html");
-        chrome.tabs.create({ url: optionsPage });
+        void chrome.tabs.create({ url: optionsPage });
         chrome.tabs.query({}, function (tabs) {
             tabs.forEach(addSmoothScrollToTab);
         });
@@ -41,7 +41,7 @@ function init(details) {
 }
 
 function addSmoothScrollToTab(tab) {
-    chrome.tabs.executeScript(tab.id, {
+    return chrome.tabs.executeScript(tab.id, {
         file: "src/sscr.js",
         allFrames: true
     });

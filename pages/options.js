@@ -1,3 +1,4 @@
+// @ts-nocheck
 
 /**
  * Options page logic.
