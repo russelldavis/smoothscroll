@@ -41,9 +41,9 @@ function init(details) {
 }
 
 function addSmoothScrollToTab(tab) {
-    void chrome.tabs.executeScript(tab.id, {
-        file: "src/sscr.js",
-        allFrames: true
+    void chrome.scripting.executeScript({
+        target: { tabId: tab.id, allFrames: true },
+        files: ["src/sscr.js"],
     });
 }
 

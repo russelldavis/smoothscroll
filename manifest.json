@@ -1,7 +1,6 @@
 {
    "background": {
-      "scripts": ["pages/background.js"],
-      "persistent": false
+      "service_worker": "pages/background.js"
    },
    "content_scripts": [ {
       "all_frames": true,
@@ -21,7 +20,7 @@
    "name": "SmoothScroll",
    "options_page": "pages/options.html",
    "version": "1.5.10",
-   "manifest_version": 2,
-   "permissions": ["storage", "webNavigation", "http://*/*", "https://*/*"],
-   "web_accessible_resources": ["img/cursor.png"]
+   "manifest_version": 3,
+   "permissions": ["storage", "webNavigation", "scripting"],
+   "host_permissions": ["http://*/*", "https://*/*"]
 }
