@@ -651,15 +651,7 @@ function onKeyDown(event) {
             console.debug("activeClickedEl element is no longer valid; scrolling body");
         }
     }
-    handleTweaks(event);
     handleKeyData(inputTarget, scrollTarget, keyData, event);
-}
-
-function handleTweaks(event) {
-    // Fix bug where context menu pops up: https://community.spreadsheet.com/t/bug-command-key-on-mac-causes-context-menu-to-pop-up/752
-    if (isSpreadsheetDotCom && event.code === "MetaRight") {
-        event.stopPropagation();
-    }
 }
 
 function overrideInputTarget(inputTarget) {
