@@ -1,6 +1,7 @@
 const shouldLogEvents = false;
 
 const SCROLL_MSG_ID = "01f116cd-717b-42fc-ab68-932cd0ce961d"
+const IFRAME_INFO_MSG_ID = "01f116cd-717b-42fc-ab68-932cd0ce962e"
 
 // Scroll Variables (tweakable)
 var defaultOptions = {
@@ -62,6 +63,7 @@ let clearedInitialFocusWhileNotHidden = false;
 let didFirstKeypress = false;
 let isAirtable = false;
 let isSpreadsheetDotCom = false;
+let iframeScrollDisabled = false;
 
 function init() {
     if (document.URL.startsWith("https://mail.google.com")) {
@@ -134,8 +136,23 @@ function onDOMContentLoaded() {
         html.style.backgroundAttachment = 'scroll';
     }
 
-    // Not sure yet how to best handle focus in frames, ignore them for now.
+    // Not sure yet how to best handle initial focus in frames, ignore them for now.
     if (!isFrame) {
+        // Chrome has a weird bug: if you focus an iframe (click anywhere inside it), then hit Cmd-R
+        // to refresh the whole page, the top window will be treated as unfocused (as if the iframe
+        // still had the focus, even though it doesn't). If you iterate over all iframes, everything
+        // reports document.hasFocus() is false. The main issue with this is that if you switch to
+        // another tab or app, the blur event will not fire (which messes with our blur event
+        // handling).
+        //
+        // This block works around that by ensuring the window has the focus. I'm not sure the
+        // hasFocus() check is even needed -- if it's already true, I'm pretty sure it's just a
+        // no-op, but I'm keeping it there just in case. Also, note that if the page opens in the
+        // background and it truly doesn't have the focus, then window.focus() will be a no-op,
+        // so it shouldn't affect anything in that case.
+        if (!document.hasFocus()) {
+            window.focus();
+        }
         tryClearInitialFocus(20);
     }
 }
@@ -882,6 +899,28 @@ function onFocus(event) {
     logEvent(event);
 }
 
+function onWindowBlur(event) {
+    const activeEl = document.activeElement;
+    // Iframes can set the scrolling="no" attribute, in which case there will be no scrollbars
+    // and scrolling should not occur. But AFAICT, there's no way to determine whether that
+    // attribute is set from *within* the iframe (which is where we do our smooth scrolling).
+    // So, our workaround is to update an iframe on the value of that attribute any time it
+    // gets focused (this is much simpler than trying to observe all iframes nodes for attribute
+    // changes).
+    //
+    // We use the blur event to determine when iframes get focused, because the iframe node itself
+    // won't get a focus event (it's inner window will, but we need an event in the parent). The
+    // parent window gets a blur event any time an iframe gets the focus, so we just check if the
+    // activeElement is an iframe.
+    if (!(activeEl instanceof HTMLIFrameElement)) {
+        return;
+    }
+    activeEl.contentWindow.postMessage({
+        id: IFRAME_INFO_MSG_ID,
+        iframeScrollDisabled: (activeEl.getAttribute("scrolling") || "").toLowerCase() === "no"
+    }, "*");
+}
+
 function getInnerTarget(event) {
     if (event.target.shadowRoot) {
         // The target is a webcomponent. Get the real (inner) target.
@@ -904,12 +943,7 @@ function getIframeForEvent(event) {
     return null;
 }
 
-function onMessage(event) {
-    let data = event.data;
-    if (data?.id !== SCROLL_MSG_ID) {
-        return;
-    }
-
+function onScrollMsg(event) {
     event.stopImmediatePropagation();
     // Don't think there's a default action, but we don't want it if there ever is
     event.preventDefault();
@@ -926,7 +960,21 @@ function onMessage(event) {
     // Passing in null for inputTarget, since we've already handled the input
     // filtering here in this iframe.
     // Passing in a dummy event for IEventActions, which will be no-ops.
-    handleKeyData(null, scrollTarget, data.keyData, new Event("dummy"))
+    handleKeyData(null, scrollTarget, event.data.keyData, new Event("dummy"))
+}
+
+function onIframeInfoMsg(event) {
+    iframeScrollDisabled = event.data.iframeScrollDisabled;
+}
+
+const messageHandlers = new Map([
+    [SCROLL_MSG_ID, onScrollMsg],
+    [IFRAME_INFO_MSG_ID, onIframeInfoMsg],
+]);
+
+function onMessage(event) {
+    const handler = messageHandlers.get(event.data?.id);
+    handler?.(event);
 }
 
 /***********************************************
@@ -968,8 +1016,10 @@ function getShadowRootHost(el) {
 }
 
 function isRootScrollCandidate(docEl, body) {
-    return overflowAutoOrScroll(docEl) ||
-        (overflowNotHidden(docEl) && overflowNotHidden(body))
+    return (
+        overflowAutoOrScroll(docEl) || (overflowNotHidden(docEl) && overflowNotHidden(body))
+        // if the iframe has the attribute scrolling="no", don't scroll it
+    ) && !iframeScrollDisabled;
 }
 
 function isScrollable(el, checkVisibility = true) {
@@ -1124,7 +1174,12 @@ function addListeners() {
     addListener("message", onMessage, true);
     addListener('keydown', onKeyDown, true);
     addListener('focus', onFocus, true);
-    // We want the non-capturing phase for mousedown events so we
+    // Using capture=false here because only care about the blur event for the window itself.
+    // This trades perf and simplicity for weird scrolling behavior in the rare event that a page
+    // captures blur events and stops propagation before we see them, and *also* has a weird
+    // overflowing iframe without scrollbars.
+    addListener('blur', onWindowBlur, false);
+    // Using capture=false here for mousedown events so we
     // can act based on event.defaultPrevented. In the rare case that
     // stopPropagation() is called and preventDefault() is *not* called,
     // we'll miss a relevant event, but that should be super rare and
