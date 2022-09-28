@@ -1,3 +1,26 @@
+// Note: In recent months (years?) it seems Chrome for Mac finally implemented smooth scrolling.
+// However, there are still some major issues that this addresses:
+// - Arrow keys don't scroll far enough. My prefs for the extension set the distance to 2x what
+// chrome uses (80px vs 40px). This makes a huge difference, and even moreso on sites where
+// scrolling is janky like Twitter.
+// - On sites with complex or nonstandard layouts, this extension will make the best scrollable
+// gets scrolled. Otherwise, sometimes a smaller scrollable will be used (e.g. in gmail) or on
+// some sites, nothing will be scrolled at all even though a scrollable is visible (see comments
+// around call sites of getBestScrollable).
+// - So, I guess this extension should be called something else, maybe SmartScroll.
+
+// Issues:
+// - When using the search box on safeway.com and pressing the down arrow twice to select typeahead
+// results, the page will start scolling -- because after the first down arrow, the textbox loses
+// focus.
+//   - Potential fix: start handling key input after bubbling rather than before, and ignore
+//   it if defaultPrevented is true. This would also remove the need for our special handling
+//   on a lot of other sites (e.g., airtable, spreadsheet.com, probably notion).
+//     - This behavior was introduced at [ https://github.com/russelldavis/smoothscroll/commit/a6bdd5e359347793aadd4c8ab853ba8b8b81ae25 ].
+//     In retrospect, that was the wrong approach, because there are enough legitimate cases for
+//     overriding scroll keys. If you still prefer that tradeoff, you could do that in its own
+//     separate extension.
+
 const shouldLogEvents = false;
 
 const SCROLL_MSG_ID = "01f116cd-717b-42fc-ab68-932cd0ce961d"
@@ -6,9 +29,9 @@ const IFRAME_INFO_MSG_ID = "01f116cd-717b-42fc-ab68-932cd0ce962e"
 // Scroll Variables (tweakable)
 var defaultOptions = {
     // Scrolling Core
-    frameRate        : 150, // [Hz]
-    animationTime    : 400, // [px]
-    stepSize         : 100, // [px]
+    frameRate        : 150, // [Hz], unused
+    animationTime    : 400, // [px], my pref: 150
+    stepSize         : 100, // [px], my pref: 120
 
     // Pulse (less tweakable)
     // ratio of 'tail' to 'acceleration'
@@ -17,11 +40,11 @@ var defaultOptions = {
     pulseNormalize   : 1,
 
     // Acceleration
-    accelerationDelta : 50,  // 20
-    accelerationMax   : 3,   // 1
+    accelerationDelta : 50,  // my pref: 20
+    accelerationMax   : 3,   // my pref: 1
 
-    keyboardSupport   : true,  // option
-    arrowScroll       : 50,     // [px]
+    keyboardSupport   : true,
+    arrowScroll       : 50,  // [px], my pref: 80
 
     // Other
     fixedBackground   : true,
