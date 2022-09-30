@@ -220,8 +220,11 @@ function clearInitialFocus() {
         el.autofocus = false;
     }
 
-    if (document.activeElement instanceof HTMLInputElement) {
-        document.activeElement.blur();
+    // Example where a textarea has initial focus: https://steampipe.io/
+    // (it's not even used for user input, so 100% shouldn't be focused).
+    const activeEl = document.activeElement;
+    if (activeEl instanceof HTMLInputElement || activeEl instanceof HTMLTextAreaElement) {
+        activeEl.blur();
         return true;
     }
     return false;
