@@ -386,10 +386,11 @@ function getOffsetFromRoot(el) {
 
 // This doesn't catch every way of hiding an element, but it's good enough for now.
 // See https://stackoverflow.com/questions/19669786/check-if-element-is-visible-in-dom
+// and https://drafts.csswg.org/cssom-view/#dom-element-checkvisibility
 function visibleInDom(el) {
     // Example where checking visibility matters (after clicking the Read More link to open an overlay):
     // https://www.mazdausa.com/shopping-tools/build-and-price/2020-mazda3-sedan#s=1&tr=Automatic&d=AWD&f=Gasoline&t=20M3SSE%7C20M3SSEXA&ex=42M&in=V_BY3&p=&ip=1SE&o=&io=
-    return el.getClientRects().length > 0 && getComputedStyle(el).visibility !== "hidden";
+    return el.checkVisibility({checkOpacity: true, checkVisibilityCSS: true});
 }
 
 function isScrollCandidate(el, checkVisibility = false) {
