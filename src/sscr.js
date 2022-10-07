@@ -223,7 +223,23 @@ function clearInitialFocus() {
     // Example where a textarea has initial focus: https://steampipe.io/
     // (it's not even used for user input, so 100% shouldn't be focused).
     const activeEl = document.activeElement;
-    if (activeEl instanceof HTMLInputElement || activeEl instanceof HTMLTextAreaElement) {
+    if (activeEl instanceof HTMLInputElement ||
+        (
+            // Some pages uses offscreen textareas as a helper utility.
+            // Example: https://steampipe.io/ has an animation of a terminal that has a textarea
+            // with the class "xterm-helper-textarea".
+            //
+            // Other pages have iframes below the fold that really shouldn't have the initial focus
+            // since they're not in view. Example: https://nestjs.com/ has an iframe loading
+            // stackblitz.com a ways down the page.
+            //
+            // Note, may sites have legitmate iframes/textareas at the top of the page in view, and
+            // we don't want to steal the focus from those, which is why we check visibleInViewport.
+            // Example: https://www.typescriptlang.org/play
+            (activeEl instanceof HTMLTextAreaElement || activeEl instanceof HTMLIFrameElement) &&
+            !visibleInViewport(activeEl)
+        )
+    ) {
         activeEl.blur();
         return true;
     }
@@ -393,6 +409,21 @@ function visibleInDom(el) {
     return el.checkVisibility({checkOpacity: true, checkVisibilityCSS: true});
 }
 
+function visibleInViewport(el) {
+    if (!visibleInDom(el)) return false;
+    const rect = el.getBoundingClientRect();
+
+    // See https://developer.mozilla.org/en-US/docs/Web/API/Element/clientHeight
+    // and https://developer.mozilla.org/en-US/docs/Web/API/document/scrollingElement
+    // `body` is always the viewportEl in quirks mode, but scrollingElement returns null in
+    // quirks mode if it isn't "potentially scrollable".
+    const viewportEl = document.scrollingElement ?? document.body;
+    return (
+        (rect.right >= 0) && (rect.left < viewportEl.clientWidth) &&
+        (rect.bottom >= 0) && (rect.top < viewportEl.clientHeight)
+    );
+}
+
 function isScrollCandidate(el, checkVisibility = false) {
     if (checkVisibility && !visibleInDom(el)) {
         return false;
@@ -412,7 +443,7 @@ function isScrollCandidate(el, checkVisibility = false) {
         return isRootScrollCandidate(ownerDoc.documentElement, ownerDoc.body)
     }
 
-    // Note that when body has 'height: 100%' (or when in quirks mode) body and documentElement
+    // Note that when body has 'height: 100%' (or when in quirks mode), body and documentElement
     // will have identical clientHeight and scrollHeight, both indicating overflow when it exists.
     // But setting scrollTop will only work on scrollingEl.
     // Example: https://chromium-review.googlesource.com/c/chromium/src/+/2404277
