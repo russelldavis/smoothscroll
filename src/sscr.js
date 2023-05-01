@@ -86,6 +86,7 @@ let clearedInitialFocusWhileNotHidden = false;
 let didFirstKeypress = false;
 let isAirtable = false;
 let isSpreadsheetDotCom = false;
+let isZbase = false;
 let iframeScrollDisabled = false;
 
 function init() {
@@ -130,6 +131,9 @@ function onOptionsLoaded(loadedOptions) {
 function onDOMContentLoaded() {
     if (isExcluded) {
         return;
+    }
+    if (/\bZBase\b/.test(document.title)) {
+        isZbase = true;
     }
 
     if (!document.scrollingElement) {
@@ -681,6 +685,10 @@ function shouldIgnoreKeydown(targetEl, keyData) {
     // that, since it will just navigate the grid. (We allow for a scrollable activeElement for
     // cases like the Automations modal that has a scrollable inner section).
     if (isSpreadsheetDotCom && !isScrollable(document.activeElement)) {
+        return true;
+    }
+
+    if (isZbase) {
         return true;
     }
 
