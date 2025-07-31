@@ -88,6 +88,7 @@ let isAirtable = false;
 let isSpreadsheetDotCom = false;
 let isZbase = false;
 let iframeScrollDisabled = false;
+let blockSpacebarKeyup = false;
 
 function init() {
     if (document.URL.startsWith("https://mail.google.com")) {
@@ -108,6 +109,11 @@ function init() {
     if (document.domain === "app.spreadsheet.com") {
         isSpreadsheetDotCom = true;
     }
+    if (location.hostname === "www.youtube.com") {
+        // Youtube uses spacebar keyup to pause/unpause videos. But we only want it to scroll.
+        blockSpacebarKeyup = true;
+    }
+
 }
 
 function onOptionsLoaded(loadedOptions) {
@@ -718,6 +724,17 @@ class IEventActions {
 /**
  * @param {KeyboardEvent} event
  */
+function onKeyUp(event) {
+    // See where blockSpacebarKeyup gets set for details
+    if (event.keyCode === keyToCode.spacebar) {
+        event.preventDefault()
+        event.stopImmediatePropagation()
+    }
+}
+
+/**
+ * @param {KeyboardEvent} event
+ */
 function onKeyDown(event) {
     const keyData = new KeyData(event);
     const inputTarget = overrideInputTarget(getInnerTarget(event));
@@ -1239,6 +1256,9 @@ function addListeners() {
     addListener('DOMContentLoaded', onDOMContentLoaded, true);
     addListener("message", onMessage, true);
     addListener('keydown', onKeyDown, true);
+    if (blockSpacebarKeyup) {
+        addListener('keyup', onKeyUp, true);
+    }
     addListener('focus', onFocus, true);
     // Using capture=false here because only care about the blur event for the window itself.
     // This trades perf and simplicity for weird scrolling behavior in the rare event that a page
