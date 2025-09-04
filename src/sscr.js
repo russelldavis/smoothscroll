@@ -123,6 +123,7 @@ function onOptionsLoaded(loadedOptions) {
     let domains = options.excluded.split(/[,\n] ?/);
     domains.push('play.google.com/music'); // problem with Polymer elements
     domains.push('strava.com'); // slow scrolling for some reason
+    domains.push('notion.so'); // too many issues, swallows space key in editable areas
     for (let i = domains.length; i--;) {
         // domains[i] can be empty if options.excluded is empty, or if there are blank lines
         if (domains[i] && (document.URL.indexOf(domains[i]) > -1)) {
