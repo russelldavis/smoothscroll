@@ -116,19 +116,22 @@ function init() {
 
 }
 
+function excludeDomain(name) {
+    console.log("SmoothScroll is disabled for " + name);
+    isExcluded = true;
+}
+
 function onOptionsLoaded(loadedOptions) {
     options = loadedOptions;
 
     // disable everything if the page is blacklisted
+    // NB: This doesn't seem to work on certain sites, because of timing with addListeners being
+    // called after this runs, so hardcoded stuff happens directly in addListeners now.
     let domains = options.excluded.split(/[,\n] ?/);
-    domains.push('play.google.com/music'); // problem with Polymer elements
-    domains.push('strava.com'); // slow scrolling for some reason
-    domains.push('notion.so'); // too many issues, swallows space key in editable areas
     for (let i = domains.length; i--;) {
         // domains[i] can be empty if options.excluded is empty, or if there are blank lines
         if (domains[i] && (document.URL.indexOf(domains[i]) > -1)) {
-            console.log("SmoothScroll is disabled for " + domains[i]);
-            isExcluded = true;
+            excludeDomain(name)
             removeListeners();
             return;
         }
@@ -1249,7 +1252,19 @@ function addListener(type, listener, useCapture) {
     listeners.push([type, listener, useCapture]);
 }
 
+const EXCLUDE_DOMAINS = [
+    'play.google.com/music',
+    'strava.com',
+    'notion.so',
+]
 function addListeners() {
+    for (const domain of EXCLUDE_DOMAINS) {
+        if (document.URL.indexOf(domain) > -1) {
+            excludeDomain(domain)
+            return
+        }
+    }
+
     // This gets called multiple times, so clear listeners first.
     // The browser already makes re-adding a no-op, no need to explicitly
     // removeListener (directly or indirectly via removeListeners()).
