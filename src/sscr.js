@@ -1256,6 +1256,7 @@ const EXCLUDE_DOMAINS = [
     'play.google.com/music',
     'strava.com',
     'notion.so',
+    'app.stainless.com'
 ]
 function addListeners() {
     for (const domain of EXCLUDE_DOMAINS) {
